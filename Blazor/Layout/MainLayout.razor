@@ -1,0 +1,260 @@
+@inherits LayoutComponentBase
+@using System.Timers
+@using Microsoft.AspNetCore.Components.Authorization
+@using Application.Features.Notifications
+@using Blazor.Services
+@using Blazor.Security
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject NotificationApiService NotificationApiService
+@inject CustomAuthStateProvider AuthStateProvider
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject ShortcutService ShortcutService
+
+<div class="uta-layout">
+    <aside class="uta-sidebar">
+        <NavMenu />
+    </aside>
+
+    <main class="uta-main">
+        <header class="uta-top-bar">
+            <div class="uta-top-bar__left">
+                <div class="uta-status-pill" title="Conexión estable con el servidor">
+                    <span class="uta-status-dot uta-status-dot--pulse"></span>
+                    <span class="uta-status-text">Sistema En Línea</span>
+                </div>
+            </div>
+
+            <div class="uta-top-bar__right">
+                <div class="uta-clock-pill" title="Hora actual del sistema">
+                    <i class="bi bi-clock text-primary"></i>
+                    <span class="uta-clock-time">@_currentTime</span>
+                </div>
+
+                <AuthorizeView>
+                    <Authorized>
+                        @{
+                            var mustChange = context.User.HasClaim(c => c.Type == "MustChangePassword" && c.Value.Equals("true", StringComparison.OrdinalIgnoreCase));
+                            var totalNotifs = _notifications.Count + (mustChange ? 1 : 0);
+                        }
+                        <div class="uta-notification-wrapper">
+                            <button class="uta-icon-btn uta-notification-btn" @onclick="ToggleNotifications" title="Notificaciones">
+                                <i class="bi bi-bell"></i>
+                                @if (totalNotifs > 0)
+                                {
+                                    <span class="uta-notification-badge">@totalNotifs</span>
+                                }
+                            </button>
+
+                            @if (_showNotifications)
+                            {
+                                <div class="uta-notification-dropdown">
+                                    <div class="uta-notification-header">
+                                        <span>Notificaciones (@totalNotifs)</span>
+                                        <button class="btn-close-sm" @onclick="ToggleNotifications"><i class="bi bi-x"></i></button>
+                                    </div>
+                                    <div class="uta-notification-body">
+                                        @if (mustChange)
+                                        {
+                                            <div class="uta-notification-item uta-notification-item--warning" @onclick='() => NavigateTo("/mi-perfil")'>
+                                                <div class="uta-notification-item__icon">
+                                                    <i class="bi bi-shield-lock-fill"></i>
+                                                </div>
+                                                <div class="uta-notification-item__content">
+                                                    <div class="uta-notification-item__title">Seguridad Requerida</div>
+                                                    <div class="uta-notification-item__text">Por favor, cambia tu contraseña temporal por una personal.</div>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @foreach (var n in _notifications)
+                                        {
+                                            <div class="uta-notification-item uta-notification-item--@(n.Type.ToLower())" @onclick='() => NavigateTo(n.TargetUrl)'>
+                                                <div class="uta-notification-item__icon">
+                                                    <i class="bi @n.Icon"></i>
+                                                </div>
+                                                <div class="uta-notification-item__content">
+                                                    <div class="uta-notification-item__title">@GetNotificationTitle(n)</div>
+                                                    <div class="uta-notification-item__text">@n.Message</div>
+                                                    <div class="uta-notification-item__time">@FormatRelativeTime(n.CreatedAt)</div>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @if (totalNotifs == 0)
+                                        {
+                                            <div class="uta-notification-empty">
+                                                <i class="bi bi-check2-circle"></i>
+                                                <span>No tienes notificaciones pendientes</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="uta-divider-vertical"></div>
+
+                        <div class="uta-user-menu" @onclick='() => NavigationManager.NavigateTo("/mi-perfil")' style="cursor:pointer">
+                            <div class="uta-user-avatar">
+                                @(context.User.Identity?.Name?.Substring(0, 1).ToUpper() ?? "U")
+                            </div>
+                            <div class="uta-user-info">
+                                <span class="uta-user-name">@context.User.Identity?.Name</span>
+                                <span class="uta-user-role">
+                                    @(context.User.IsInRole("Administrador") ? "Administrador" : "Vendedor")
+                                </span>
+                            </div>
+                            <i class="bi bi-person-bounding-box uta-user-chevron"></i>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <div class="uta-user-menu" @onclick='() => NavigationManager.NavigateTo("/login")' style="cursor:pointer">
+                            <div class="uta-user-avatar">?</div>
+                            <div class="uta-user-info">
+                                <span class="uta-user-name">Invitado</span>
+                                <span class="uta-user-role">Iniciar sesión</span>
+                            </div>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <section class="uta-content">
+            @Body
+        </section>
+    </main>
+</div>
+
+@code {
+    private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
+    private Timer? _timer;
+    private Timer? _notifTimer;
+    private bool _showNotifications = false;
+    private List<NotificationDto> _notifications = new();
+    private DotNetObjectReference<MainLayout>? _objRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _timer = new Timer(1000);
+        _timer.Elapsed += UpdateClock;
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+
+        // Timer para refrescar notificaciones cada 30 segundos
+        _notifTimer = new Timer(30000);
+        _notifTimer.Elapsed += async (s, e) => {
+            await RefreshNotifications();
+        };
+        _notifTimer.AutoReset = true;
+        _notifTimer.Enabled = true;
+
+        await RefreshNotifications();
+    }
+
+    private bool _isDisposed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try 
+            {
+                _objRef = DotNetObjectReference.Create(this);
+                var timeout = Configuration.GetValue<int>("BusinessSettings:IdleTimeoutInMinutes", 10);
+                
+                // Solo inicializar si no se ha destruido el componente (por redirección rápida)
+                if (!_isDisposed && _objRef != null)
+                {
+                    await JS.InvokeVoidAsync("setupInactivityTimer", _objRef, timeout);
+                    await JS.InvokeVoidAsync("utaShortcuts.init", _objRef);
+                }
+            }
+            catch (Exception) 
+            {
+                // Silenciar errores si el componente se desmonta durante la carga
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void HandleGlobalKey(string key)
+    {
+        if (!_isDisposed) ShortcutService.NotifyShortcut(key);
+    }
+
+    [JSInvokable]
+    public async Task LogoutUser()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            await AuthStateProvider.NotifyUserLogout();
+            NavigationManager.NavigateTo("/login?reason=idle");
+        }
+    }
+
+    private void UpdateClock(object? sender, ElapsedEventArgs e)
+    {
+        _currentTime = DateTime.Now.ToString("HH:mm:ss");
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshNotifications()
+    {
+        try 
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated != true) return;
+
+            _notifications = await NotificationApiService.GetNotificationsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch 
+        {
+            // Silencioso para el polling de fondo
+        }
+    }
+
+    private void ToggleNotifications()
+    {
+        _showNotifications = !_showNotifications;
+        if (_showNotifications)
+        {
+            _ = RefreshNotifications();
+        }
+    }
+
+    private void NavigateTo(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return;
+        _showNotifications = false;
+        NavigationManager.NavigateTo(url);
+    }
+
+    private string GetNotificationTitle(NotificationDto n)
+    {
+        if (n.Type == "Warning") return "Alerta de Stock";
+        if (n.Type == "Danger") return n.Message.StartsWith("Venta Anulada") ? "Venta Anulada" : "Stock Agotado";
+        return "Aviso de Venta";
+    }
+
+    private string FormatRelativeTime(DateTime date)
+    {
+        var span = DateTime.UtcNow - date.ToUniversalTime();
+        if (span.TotalMinutes < 1) return "Ahora mismo";
+        if (span.TotalMinutes < 60) return $"Hace {Math.Floor(span.TotalMinutes)} min";
+        if (span.TotalHours < 24) return $"Hace {Math.Floor(span.TotalHours)} horas";
+        return date.ToString("dd/MM HH:mm");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _notifTimer?.Dispose();
+        _objRef?.Dispose();
+    }
+}

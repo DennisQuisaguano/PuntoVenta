@@ -1,0 +1,768 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+::deep {
+    --wine: #6B1A33;
+    --wine-light: #8b2041;
+    --wine-pale: #f3e1e6;
+    --text-dark: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --bg-light: #f9fafb;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.uta-page {
+    font-family: 'Inter', sans-serif;
+    background: #f4f6f9;
+    min-height: 100vh;
+    padding: 1.8rem 2rem;
+    color: #2c3e50;
+}
+
+.text-custom-primary {
+    color: #6B1A33 !important;
+}
+
+.text-warning {
+    color: #f59e0b !important;
+}
+
+.uta-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.uta-breadcrumb {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+}
+
+.uta-breadcrumb__sep {
+    margin: 0 0.35rem;
+}
+
+.uta-breadcrumb__active {
+    color: #6B1A33;
+}
+
+.uta-page-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 0.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.uta-page-title__icon {
+    font-size: 1.5rem;
+}
+
+.uta-page-subtitle {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* --- TABS IHC --- */
+.uta-tabs {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+
+.uta-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.uta-tab-btn:hover {
+    color: var(--wine);
+    background-color: var(--wine-pale);
+}
+
+.uta-tab-btn--active {
+    color: var(--wine);
+    border-bottom-color: var(--wine);
+}
+
+.uta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.uta-btn--primary {
+    background: #6B1A33;
+    color: #fff;
+}
+
+.uta-btn--primary:hover {
+    background: #521528;
+}
+
+.uta-btn--success {
+    background: #16a34a;
+    color: #fff;
+}
+
+.uta-btn--outline {
+    background: #fff;
+    color: #6B1A33;
+    border: 1px solid #6B1A33;
+}
+
+.uta-btn--outline:hover {
+    background: #fdf5f7;
+}
+
+.uta-btn--sm {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+}
+
+.uta-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+}
+
+.uta-card__header {
+    background: #6B1A33;
+    color: #fff;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.uta-card__header-icon {
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.uta-card__body {
+    padding: 1.5rem;
+}
+
+.uta-search-bar {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.uta-search-bar__select {
+    border: none;
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    padding: 0.6rem 1rem;
+    outline: none;
+    border-right: 1px solid #ced4da;
+    cursor: pointer;
+}
+
+.uta-search-bar__input {
+    flex: 1;
+    border: none;
+    padding: 0.6rem 1rem;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.uta-search-bar__btn {
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0.6rem 1.5rem !important;
+    height: 100%;
+}
+
+.uta-filters-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.uta-date-filter {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    height: 42px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.uta-date-filter__label {
+    background: #f8f9fa;
+    padding: 0 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    border-right: 1px solid #ced4da;
+}
+
+.uta-date-filter__input {
+    border: none;
+    padding: 0 0.8rem;
+    font-size: 0.85rem;
+    color: #495057;
+    height: 100%;
+    outline: none;
+    background: transparent;
+}
+
+.uta-date-filter__input:focus {
+    box-shadow: none;
+}
+
+.uta-table-wrap {
+    overflow-x: auto;
+}
+
+.uta-table-wrap--bordered {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.uta-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.uta-table thead tr {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.uta-table th {
+    padding: 0.85rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #495057;
+    text-align: left;
+}
+
+.uta-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.uta-table__bold {
+    font-weight: 600;
+    color: #212529 !important;
+}
+
+.uta-code-badge {
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: #f1f3f5;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.uta-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.uta-badge--green {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.uta-badge--red {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.uta-badge--yellow {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.uta-badge--light {
+    background: #f1f3f5;
+    color: #6c757d;
+}
+
+.uta-icon-btn-outline {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    border: 1px solid #ced4da;
+    color: #495057;
+}
+
+.uta-icon-btn-outline:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.uta-icon-btn-outline--blue {
+    color: #3b82f6;
+    border-color: #bfdbfe;
+}
+
+.uta-icon-btn-outline--blue:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+}
+
+.uta-icon-btn-outline--green {
+    color: #16a34a;
+    border-color: #bbf7d0;
+}
+
+.uta-icon-btn-outline--green:hover {
+    background: #f0fdf4;
+    border-color: #16a34a;
+}
+
+.uta-icon-btn-outline--red {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.uta-icon-btn-outline--red:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+}
+
+.uta-table__empty {
+    text-align: center;
+    padding: 3rem !important;
+}
+
+.uta-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.uta-empty-state__icon {
+    font-size: 2.5rem;
+    color: #ced4da;
+    margin-bottom: 0.5rem;
+}
+
+.uta-empty-state__text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.uta-empty-state__sub {
+    font-size: 0.8rem;
+    color: #adb5bd;
+}
+
+.uta-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    backdrop-filter: blur(3px);
+}
+
+.uta-modal {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.uta-modal--lg {
+    max-width: 750px;
+}
+
+.uta-modal__header {
+    background: #6B1A33;
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.uta-modal__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.15rem;
+}
+
+.uta-modal__subtitle {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.uta-modal__close {
+    background: rgba(255, 255, 255, .15);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.uta-modal__body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.uta-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+@media (max-width: 768px) {
+    .uta-search-bar {
+        flex-direction: column;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        gap: 0.5rem;
+    }
+
+    .uta-search-bar__select,
+    .uta-search-bar__input,
+    .uta-search-bar__btn {
+        width: 100%;
+        border: 1px solid #ced4da;
+        border-radius: 8px !important;
+    }
+
+    .uta-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
+
+/* ====================================================
+  INICIO DE LOS ESTILOS DE PAGINACIÓN 
+   ==================================================== */
+
+.uta-pagination-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+}
+
+.uta-text-highlight {
+    color: #6B1A33 !important;
+    font-weight: 700;
+}
+
+.uta-select-wrapper {
+    position: relative;
+    width: 80px;
+}
+
+.uta-pagination-footer .form-select {
+    color: #212529 !important;
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+}
+
+.uta-pagination-footer .form-select option {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+.uta-pagination-btn {
+    min-width: 40px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    color: #6B1A33;
+    border: 1px solid #dee2e6;
+    border-right: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.uta-pagination-btn:last-child {
+    border-right: 1px solid #dee2e6;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.uta-pagination-btn:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.uta-pagination-btn:hover:not(.disabled):not(.uta-pagination-btn--active) {
+    background-color: #f1f3f5;
+    color: #521528;
+}
+
+.uta-pagination-btn--active {
+    background-color: #6B1A33 !important;
+    color: #ffffff !important;
+    border-color: #6B1A33 !important;
+    z-index: 2;
+}
+
+.uta-pagination-btn.disabled {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.uta-pagination-btn--ellipsis {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: default;
+}
+
+/* ====================================================
+  FINAL DE LOS ESTILOS DE PAGINACIÓN 
+==================================================== */
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ====================================================
+   NOTIFICACIONES TOAST 
+   ==================================================== */
+.uta-toast-wrapper {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.uta-toast {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    position: relative;
+    overflow: hidden;
+    animation: toastEnter 0.5s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+@keyframes toastEnter {
+    from {
+        transform: translateX(100%) scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.uta-toast__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    background: #f8f9fa;
+}
+
+.uta-toast--success .uta-toast__icon {
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+.uta-toast--error .uta-toast__icon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.uta-toast__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding-top: 2px;
+}
+
+.uta-toast__title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.2px;
+}
+
+.uta-toast__message {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.uta-toast__close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1.2rem;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+    margin-top: -4px;
+    margin-right: -4px;
+}
+
+.uta-toast__close:hover {
+    color: #1a1a1a;
+    transform: rotate(90deg);
+}
+
+.uta-toast__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.uta-toast__progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    transform-origin: left;
+    animation: toastProgress 3s linear forwards;
+}
+
+.uta-toast--success .uta-toast__progress::after {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.uta-toast--error .uta-toast__progress::after {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+@keyframes toastProgress {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}

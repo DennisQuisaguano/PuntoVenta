@@ -1,0 +1,658 @@
+@page "/mi-perfil"
+@using Application.Features.Users
+@using Domain.Common
+@inject UserApiService UserApiService
+@inject IJSRuntime JS
+@attribute [Authorize]
+
+@if (!string.IsNullOrEmpty(_alertMessage))
+{
+    <div class="uta-toast-wrapper">
+        <div class="uta-toast @(_isError ? "uta-toast--error" : "uta-toast--success")">
+            <div class="uta-toast__icon">
+                <i class="bi @(_isError ? "bi-exclamation-triangle-fill" : "bi-check2-circle")"></i>
+            </div>
+            <div class="uta-toast__body">
+                <div class="uta-toast__title">@(_isError ? "Atención" : "¡Éxito!")</div>
+                <div class="uta-toast__message">@_alertMessage</div>
+            </div>
+            <button class="uta-toast__close" @onclick="() => _alertMessage = string.Empty">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="uta-toast__progress"></div>
+        </div>
+    </div>
+}
+
+<div class="uta-page">
+    <div class="uta-page-header">
+        <div class="uta-page-header__left">
+            <h1 class="uta-page-title">
+                <i class="bi bi-person-circle uta-page-title__icon"></i>
+                Mi Perfil
+            </h1>
+            <p class="uta-page-subtitle">Gestione su información personal y seguridad de la cuenta</p>
+        </div>
+    </div>
+
+    <div class="profile-container">
+        <!-- Tarjeta de Información Personal -->
+        <div class="uta-card profile-card">
+            <div class="uta-card__header uta-card__header--solid">
+                Información Personal
+            </div>
+            <div class="profile-display">
+                <div class="profile-display__header">
+                    <div class="profile-avatar-large">
+                        @if (!string.IsNullOrEmpty(_profileRequest.FirstName))
+                        {
+                            @(_profileRequest.FirstName.Substring(0, 1))@(_profileRequest.LastName?.Substring(0, 1) ?? "")
+                        }
+                        else
+                        {
+                            <i class="bi bi-person-fill"></i>
+                        }
+                    </div>
+                    <h3 class="profile-name">@_profileRequest.FirstName @_profileRequest.LastName</h3>
+                    <p class="profile-role">@_profileRequest.Role</p>
+                </div>
+                
+                <div class="profile-details">
+                    <div class="profile-detail-item">
+                        <span class="profile-detail-label">Usuario:</span>
+                        <span class="profile-detail-value">@_profileRequest.UserName</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="profile-detail-label">Cédula:</span>
+                        <span class="profile-detail-value">@(string.IsNullOrEmpty(_profileRequest.IDCard) ? "N/A" : _profileRequest.IDCard)</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="profile-detail-label">Teléfono:</span>
+                        <span class="profile-detail-value">@(string.IsNullOrEmpty(_profileRequest.PhoneNumber) ? "N/A" : _profileRequest.PhoneNumber)</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="profile-detail-label">Dirección:</span>
+                        <span class="profile-detail-value">@(string.IsNullOrEmpty(_profileRequest.Address) ? "N/A" : _profileRequest.Address)</span>
+                    </div>
+                    <div class="profile-detail-item">
+                        <span class="profile-detail-label">Email:</span>
+                        <span class="profile-detail-value">@_profileRequest.Email</span>
+                    </div>
+                </div>
+                
+                <div class="profile-actions">
+                    <button class="uta-btn uta-btn--outline w-100" @onclick="OpenEditProfileModal">
+                        <i class="bi bi-pencil me-2"></i> Editar Perfil
+                    </button>
+                    <button class="uta-btn uta-btn--outline w-100" style="margin-top: 0.75rem; border-color: #d1d5db; color: #374151;" @onclick="OpenPasswordModal">
+                        <i class="bi bi-key me-2"></i> Cambiar Contraseña
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de Indicadores de Rendimiento Dinámica -->
+        <div class="uta-card profile-card">
+            <div class="uta-card__header uta-card__header--solid">
+                @(_stats.IsAdmin ? "Indicadores del Negocio" : "Mi Rendimiento del Mes")
+            </div>
+            <div class="uta-card__body bg-light" style="padding: 1.5rem;">
+                <div class="indicators-grid">
+                    @if (_stats.IsAdmin)
+                    {
+                        <!-- VISTA ADMINISTRADOR -->
+                        <div class="indicator-card indicator-card--large">
+                            <div class="indicator-value text-primary">$@_stats.SystemMonthlyRevenue.ToString("N2")</div>
+                            <div class="indicator-label">Ingresos Globales (Mes)</div>
+                            <div class="indicator-meta">
+                                <i class="bi bi-graph-up-arrow text-success"></i> Sumatoria total del sistema
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-danger">@_stats.SystemLowStockCount</div>
+                            <div class="indicator-label">Stock Crítico</div>
+                            <div class="indicator-meta">
+                                Menos de 5 unidades
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-dark">@_stats.SystemNewCustomersCount</div>
+                            <div class="indicator-label">Nuevos Clientes</div>
+                            <div class="indicator-meta">Registrados este mes</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-dark">@_stats.SystemActiveUsersCount</div>
+                            <div class="indicator-label">Usuarios Activos</div>
+                            <div class="indicator-meta">Personal en el sistema</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-dark">@DateTime.Now.Day</div>
+                            <div class="indicator-label">Día del Mes</div>
+                            <div class="indicator-meta">Ciclo actual</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- VISTA VENDEDOR -->
+                        <div class="indicator-card indicator-card--large">
+                            <div class="indicator-value text-primary">@_stats.MyMonthlySalesCount</div>
+                            <div class="indicator-label">Mis Ventas del Mes</div>
+                            <div class="indicator-meta">
+                                <i class="bi bi-cart-check-fill text-success"></i> Facturas emitidas por ti
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-success">$@_stats.MyDailySalesAmount.ToString("N2")</div>
+                            <div class="indicator-label">Mis Ventas Hoy</div>
+                            <div class="indicator-meta">
+                                Recaudación del día
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-dark">$@_stats.MyMonthlySalesAmount.ToString("N0")</div>
+                            <div class="indicator-label">Total Mes</div>
+                            <div class="indicator-meta">Monto acumulado</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-dark">$@_stats.MyAverageTicket.ToString("N2")</div>
+                            <div class="indicator-label">Ticket Promedio</div>
+                            <div class="indicator-meta">Valor medio factura</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value text-dark">@((_stats.MyMonthlySalesCount > 50 ? "A" : "B"))</div>
+                            <div class="indicator-label">Nivel</div>
+                            <div class="indicator-meta">Basado en volumen</div>
+                        </div>
+                    }
+                </div>
+                <div class="mt-4">
+                    <button class="uta-btn uta-btn--primary w-100" @onclick="RefreshStats">
+                        <i class="bi bi-arrow-clockwise me-2"></i> Actualizar Indicadores
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_showEditProfileModal)
+{
+    <div class="uta-overlay">
+        <div class="uta-modal uta-modal--lg">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-person-lines-fill me-2"></i> Editar Perfil</h3>
+                    <p class="uta-modal__subtitle">Actualice su información personal.</p>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseEditProfileModal"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="uta-modal__body">
+                <EditForm id="profileForm" Model="_profileRequest" OnValidSubmit="UpdateProfile">
+                    <DataAnnotationsValidator />
+                    <div class="uta-form-grid">
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Nombre de Usuario</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person-badge uta-input-icon"></i>
+                                <input class="uta-form-control bg-light" type="text" value="@_profileRequest.UserName" readonly />
+                            </div>
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Rol en el Sistema</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-shield-check uta-input-icon"></i>
+                                <input class="uta-form-control bg-light" type="text" value="@_profileRequest.Role" readonly />
+                            </div>
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Nombre</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("FirstName") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_profileRequest.FirstName" 
+                                       @oninput="OnFirstNameInput"
+                                       maxlength="@ValidationConstants.NameMax"
+                                       onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241" />
+                            </div>
+                            @if (HasError("FirstName")) { <div class="text-danger mt-1 small">@GetError("FirstName")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Apellido</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("LastName") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_profileRequest.LastName" 
+                                       @oninput="OnLastNameInput"
+                                       maxlength="@ValidationConstants.LastNameMax"
+                                       onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241" />
+                            </div>
+                            @if (HasError("LastName")) { <div class="text-danger mt-1 small">@GetError("LastName")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Cédula</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person-vcard uta-input-icon"></i>
+                                <input class="uta-form-control bg-light" 
+                                       type="text" 
+                                       value="@_profileRequest.IDCard" 
+                                       readonly />
+                            </div>
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Teléfono</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-telephone uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("PhoneNumber") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_profileRequest.PhoneNumber" 
+                                       @oninput="OnPhoneInput"
+                                       onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                       placeholder="EJ. 099999999" maxlength="@ValidationConstants.PhoneLength" />
+                            </div>
+                            @if (HasError("PhoneNumber")) { <div class="text-danger mt-1 small">@GetError("PhoneNumber")</div> }
+                        </div>
+                        <div class="uta-form-group" style="grid-column: span 2;">
+                            <label class="uta-form-label">Dirección Domiciliaria (@(ValidationConstants.AddressMax - (_profileRequest.Address?.Length ?? 0)))</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-geo-alt uta-input-icon"></i>
+                                <input class="uta-form-control" type="text" value="@_profileRequest.Address" @oninput="OnAddressInput" placeholder="DIRECCIÓN COMPLETA" maxlength="@ValidationConstants.AddressMax" />
+                            </div>
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Correo Electrónico</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-envelope uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("Email") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_profileRequest.Email" 
+                                       @oninput="OnEmailInput"
+                                       maxlength="@ValidationConstants.EmailMax" />
+                            </div>
+                            @if (HasError("Email")) { <div class="text-danger mt-1 small">@GetError("Email")</div> }
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="uta-modal__footer">
+                <button type="button" class="uta-btn uta-btn--outline" @onclick="CloseEditProfileModal">Cancelar</button>
+                <button type="submit" form="profileForm" class="uta-btn uta-btn--primary" disabled="@_errors.Any()">
+                    <i class="bi bi-check-circle me-2"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showPasswordModal)
+{
+    <div class="uta-overlay">
+        <div class="uta-modal">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-shield-lock me-2"></i> Cambiar Contraseña</h3>
+                    <p class="uta-modal__subtitle">Actualice sus credenciales de acceso de forma segura.</p>
+                </div>
+                <button class="uta-modal__close" @onclick="ClosePasswordModal"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="uta-modal__body">
+                <EditForm id="passwordForm" Model="_passRequest" OnValidSubmit="ChangePassword">
+                    <div class="uta-form-group mb-3">
+                        <label class="uta-form-label">Contraseña Actual</label>
+                        <div class="uta-input-wrapper">
+                            <i class="bi bi-key uta-input-icon"></i>
+                            <input class="uta-form-control" type="password" @bind="_passRequest.CurrentPassword" required />
+                        </div>
+                    </div>
+                    <div class="uta-form-group mb-3">
+                        <label class="uta-form-label">Nueva Contraseña</label>
+                        <div class="uta-input-wrapper">
+                            <i class="bi bi-lock uta-input-icon"></i>
+                            <input class="uta-form-control" type="password" 
+                                   value="@_passRequest.NewPassword" 
+                                   @oninput="OnPasswordInput"
+                                   onkeypress="return event.charCode != 32"
+                                   maxlength="10" required />
+                        </div>
+                        <div class="uta-password-requirements mt-2">
+                            <div class="uta-req @(HasLength ? "valid" : "invalid")">
+                                <i class="bi @(HasLength ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> 8-@ValidationConstants.PasswordMax caracteres
+                            </div>
+                            <div class="uta-req @(HasNoSpaces ? "valid" : "invalid")">
+                                <i class="bi @(HasNoSpaces ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> Sin espacios
+                            </div>
+                            <div class="uta-req @(HasUpper ? "valid" : "invalid")">
+                                <i class="bi @(HasUpper ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> 1 mayúscula
+                            </div>
+                            <div class="uta-req @(HasLower ? "valid" : "invalid")">
+                                <i class="bi @(HasLower ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> 1 minúscula
+                            </div>
+                            <div class="uta-req @(HasNumber ? "valid" : "invalid")">
+                                <i class="bi @(HasNumber ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> 1 número
+                            </div>
+                            <div class="uta-req @(HasSpecial ? "valid" : "invalid")">
+                                <i class="bi @(HasSpecial ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> 1 especial
+                            </div>
+                        </div>
+                    </div>
+                    <div class="uta-form-group mb-4">
+                        <label class="uta-form-label">Confirmar Nueva Contraseña</label>
+                        <div class="uta-input-wrapper">
+                            <i class="bi bi-lock-fill uta-input-icon"></i>
+                            <input class="uta-form-control" type="password" @bind="_passRequest.ConfirmPassword" 
+                                   onkeypress="return event.charCode != 32"
+                                   maxlength="10" required />
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="uta-modal__footer">
+                <button type="button" class="uta-btn uta-btn--outline" @onclick="ClosePasswordModal">Cancelar</button>
+                <button type="submit" form="passwordForm" class="uta-btn uta-btn--primary">
+                    <i class="bi bi-shield-check me-2"></i> Cambiar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private UpdateUserRequest _profileRequest = new();
+    private ChangePasswordRequest _passRequest = new();
+    private ProfileStatsDto _stats = new();
+    private Dictionary<string, string> _errors = new();
+
+    private bool _showEditProfileModal = false;
+    private bool _showPasswordModal = false;
+
+    private string _alertMessage = "";
+    private bool _isError = false;
+
+    private async Task ShowToast(string message, bool isError = false)
+    {
+        _alertMessage = message;
+        _isError = isError;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _alertMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    // Password Flags
+    private bool HasNoSpaces => !string.IsNullOrEmpty(_passRequest.NewPassword) && !_passRequest.NewPassword.Contains(" ");
+    private bool HasLength => !string.IsNullOrEmpty(_passRequest.NewPassword) && _passRequest.NewPassword.Length >= 8 && _passRequest.NewPassword.Length <= 10;
+    private bool HasUpper => !string.IsNullOrEmpty(_passRequest.NewPassword) && _passRequest.NewPassword.Any(char.IsUpper);
+    private bool HasLower => !string.IsNullOrEmpty(_passRequest.NewPassword) && _passRequest.NewPassword.Any(char.IsLower);
+    private bool HasNumber => !string.IsNullOrEmpty(_passRequest.NewPassword) && _passRequest.NewPassword.Any(char.IsDigit);
+    private bool HasSpecial => !string.IsNullOrEmpty(_passRequest.NewPassword) && _passRequest.NewPassword.Any(ch => !char.IsLetterOrDigit(ch));
+    private bool IsPasswordSecure => HasLength && HasNoSpaces && HasUpper && HasLower && HasNumber && HasSpecial;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileData();
+        await RefreshStats();
+    }
+
+    private async Task LoadProfileData()
+    {
+        try
+        {
+            var user = await UserApiService.GetProfileAsync();
+            if (user != null)
+            {
+                _profileRequest = new UpdateUserRequest
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    IDCard = user.IDCard,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    Address = user.Address,
+                    Role = user.Role,
+                    IsActive = user.IsActive
+                };
+            }
+        }
+        catch (Exception)
+        {
+            await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+        }
+    }
+
+    private async Task RefreshStats()
+    {
+        try
+        {
+            var stats = await UserApiService.GetProfileStatsAsync();
+            if (stats != null)
+            {
+                _stats = stats;
+            }
+        }
+        catch (Exception)
+        {
+            await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+        }
+        StateHasChanged();
+    }
+
+    private void OnFirstNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        _profileRequest.FirstName = val;
+        ValidateField("FirstName", val, "Nombre");
+    }
+
+    private void OnLastNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        _profileRequest.LastName = val;
+        ValidateField("LastName", val, "Apellido");
+    }
+
+    private void OnIDCardInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        _profileRequest.IDCard = val;
+        ValidateField("IDCard", val, "Cédula");
+    }
+
+    private void OnPhoneInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        if (val.Length > ValidationConstants.PhoneLength) val = val.Substring(0, ValidationConstants.PhoneLength);
+        _profileRequest.PhoneNumber = val;
+        ValidateField("PhoneNumber", val, "Teléfono");
+    }
+
+    private void OnAddressInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        if (val.Length > ValidationConstants.AddressMax) val = val.Substring(0, ValidationConstants.AddressMax);
+        _profileRequest.Address = val.ToUpper();
+    }
+
+    private void OnEmailInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString()?.Trim() ?? "";
+        if (val.Length > ValidationConstants.EmailMax) val = val.Substring(0, ValidationConstants.EmailMax);
+        _profileRequest.Email = val;
+        ValidateField("Email", val, "Correo");
+    }
+
+    private void OnPasswordInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        if (val.Length > ValidationConstants.PasswordMax) val = val.Substring(0, ValidationConstants.PasswordMax);
+        _passRequest.NewPassword = val;
+        StateHasChanged();
+    }
+
+    private void ValidateField(string field, string val, string label)
+    {
+        _errors.Remove(field);
+        if (string.IsNullOrWhiteSpace(val) && field != "IDCard" && field != "PhoneNumber")
+        {
+            _errors[field] = $"{label} es requerido.";
+            return;
+        }
+
+        if (field == "IDCard" && !string.IsNullOrEmpty(val) && val.Length != ValidationConstants.IDCardLength)
+        {
+            _errors[field] = $"La cédula debe tener {ValidationConstants.IDCardLength} dígitos.";
+            return;
+        }
+
+        if (field == "PhoneNumber" && !string.IsNullOrEmpty(val))
+        {
+            if (val.Length != ValidationConstants.PhoneLength) _errors[field] = $"El teléfono debe tener {ValidationConstants.PhoneLength} dígitos.";
+            else if (!val.StartsWith("09")) _errors[field] = "Debe empezar con 09.";
+            return;
+        }
+
+        if (field == "Email" && !IsValidEmail(val))
+        {
+            _errors[field] = "Formato de correo no válido.";
+            return;
+        }
+
+        if ((field == "FirstName" || field == "LastName") && !System.Text.RegularExpressions.Regex.IsMatch(val, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$"))
+        {
+            _errors[field] = $"{label} solo debe contener letras.";
+            return;
+        }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address.Equals(email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private bool HasError(string field) => _errors.ContainsKey(field);
+    private string GetError(string field) => _errors.TryGetValue(field, out var error) ? error : "";
+
+    private async Task UpdateProfile()
+    {
+        ValidateField("FirstName", _profileRequest.FirstName, "Nombre");
+        ValidateField("LastName", _profileRequest.LastName, "Apellido");
+        ValidateField("Email", _profileRequest.Email, "Correo");
+        ValidateField("PhoneNumber", _profileRequest.PhoneNumber, "Teléfono");
+
+        if (_errors.Any()) 
+        {
+            await ShowToast("Por favor corrija los errores del formulario.", true);
+            return;
+        }
+
+        try
+        {
+            var response = await UserApiService.UpdateProfileAsync(_profileRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                _showEditProfileModal = false;
+                await ShowToast("Perfil actualizado correctamente.");
+                await LoadProfileData();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await ShowToast("No se pudo actualizar el perfil: " + error, true);
+            }
+        }
+        catch (Exception)
+        {
+            await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (!IsPasswordSecure)
+        {
+            await ShowToast("La nueva contraseña no cumple los requisitos.", true);
+            return;
+        }
+
+        if (_passRequest.NewPassword != _passRequest.ConfirmPassword)
+        {
+            await ShowToast("Las contraseñas no coinciden.", true);
+            return;
+        }
+
+        try
+        {
+            var response = await UserApiService.ChangePasswordAsync(_passRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                _passRequest = new();
+                _showPasswordModal = false;
+                await ShowToast("Contraseña cambiada exitosamente.");
+            }
+            else
+            {
+                var errorJson = await response.Content.ReadAsStringAsync();
+                string msg = "Error al cambiar contraseña.";
+                try {
+                    var doc = System.Text.Json.JsonDocument.Parse(errorJson);
+                    msg = doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() ?? msg : msg;
+                    
+                    if (msg.Contains("Incorrect password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        msg = "La contraseña actual es incorrecta.";
+                    }
+                } catch {}
+                await ShowToast(msg, true);
+            }
+        }
+        catch (Exception)
+        {
+            await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+        }
+    }
+    private void OpenEditProfileModal()
+    {
+        _errors.Clear();
+        _showEditProfileModal = true;
+    }
+
+    private void CloseEditProfileModal()
+    {
+        _showEditProfileModal = false;
+    }
+
+    private void OpenPasswordModal()
+    {
+        _passRequest = new();
+        _errors.Clear();
+        _showPasswordModal = true;
+    }
+
+    private void ClosePasswordModal()
+    {
+        _showPasswordModal = false;
+    }
+}

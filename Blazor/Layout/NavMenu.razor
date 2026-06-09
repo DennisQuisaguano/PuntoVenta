@@ -1,0 +1,140 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Blazor.Security
+@inject CustomAuthStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+
+<div class="top-row ps-3 navbar navbar-dark uta-brand-header">
+    <div class="container-fluid">
+        <a class="navbar-brand uta-brand-text" href="">
+            <i class="bi bi-shop uta-brand-icon text-warning"></i> MI NEGOCIO
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable uta-sidebar-menu" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column uta-nav">
+        
+        <AuthorizeView>
+            <Authorized>
+                @foreach (var grupo in GetFilteredMenu(context).GroupBy(m => m.Section))
+                {
+                    <div class="uta-nav-section">@grupo.Key</div>
+                    
+                    @foreach (var item in grupo)
+                    {
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link uta-nav-link" href="@item.Url" Match="@item.Match" data-accesskey="@item.AccessKey">
+                                <div class="uta-menu-icon">
+                                    <i class="@item.Icon"></i>
+                                </div>
+                                <div class="uta-menu-text">@item.Title</div>
+                                @if (!string.IsNullOrEmpty(item.AccessKey))
+                                {
+                                    <span class="uta-keytip">@item.AccessKey</span>
+                                }
+                            </NavLink>
+                        </div>
+                    }
+                }
+
+                <div class="uta-nav-section">CUENTA</div>
+                <div class="nav-item px-3">
+                    <button class="nav-link uta-nav-link border-0 bg-transparent w-100 text-start" @onclick="HandleLogout" data-accesskey="X">
+                        <div class="uta-menu-icon">
+                            <i class="bi bi-box-arrow-left text-danger"></i>
+                        </div>
+                        <div class="uta-menu-text">Cerrar Sesión</div>
+                        <span class="uta-keytip">X</span>
+                    </button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3 mt-4">
+                    <NavLink class="nav-link uta-nav-link" href="login">
+                        <div class="uta-menu-icon">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                        </div>
+                        <div class="uta-menu-text">Iniciar Sesión</div>
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async Task HandleLogout()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Cerrar sesión?",
+            text = "Se finalizará su sesión actual y deberá ingresar sus credenciales nuevamente.",
+            icon = "question",
+            showCancelButton = true,
+            confirmButtonColor = "#6B1A33",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, cerrar sesión",
+            cancelButtonText = "Cancelar"
+        });
+
+        if (await Confirmed(result))
+        {
+            await AuthStateProvider.NotifyUserLogout();
+            NavManager.NavigateTo("login");
+        }
+    }
+
+    private async Task<bool> Confirmed(object result)
+    {
+        if (result == null) return false;
+        try
+        {
+            var element = (System.Text.Json.JsonElement)result;
+            return element.TryGetProperty("isConfirmed", out var confirmed) && confirmed.GetBoolean();
+        }
+        catch { return false; }
+    }
+
+    private IEnumerable<MenuOption> GetFilteredMenu(AuthenticationState context)
+    {
+        return _menuOptions.Where(m => string.IsNullOrEmpty(m.Role) || context.User.IsInRole(m.Role));
+    }
+
+    private class MenuOption
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
+        public string Section { get; set; } = string.Empty;
+        public string? Role { get; set; }
+        public string? AccessKey { get; set; }
+        public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+    }
+
+    private List<MenuOption> _menuOptions = new()
+    {
+        new MenuOption { Section = "MI INFORMACIÓN", Title = "Mi Perfil", Icon = "bi bi-person-badge", Url = "mi-perfil", AccessKey = "M" },
+        new MenuOption { Section = "PRINCIPAL", Title = "Panel de Control", Icon = "bi bi-house-door", Url = "", Match = NavLinkMatch.All, AccessKey = "H" },
+        new MenuOption { Section = "OPERACIONES", Title = "Punto de Venta", Icon = "bi bi-cart3", Url = "ventas", Role = "Vendedor", AccessKey = "V" },
+        new MenuOption { Section = "OPERACIONES", Title = "Facturación", Icon = "bi bi-receipt", Url = "facturas", AccessKey = "F" }, 
+        new MenuOption { Section = "CATÁLOGOS", Title = "Productos", Icon = "bi bi-box-seam", Url = "productos", Role = "Administrador", AccessKey = "P" },
+        new MenuOption { Section = "CATÁLOGOS", Title = "Clientes", Icon = "bi bi-people", Url = "clientes", Role = "Administrador", AccessKey = "C" },
+        new MenuOption { Section = "SISTEMA", Title = "Usuarios", Icon = "bi bi-person-gear", Url = "usuarios", Role = "Administrador", AccessKey = "U" },
+        new MenuOption { Section = "SISTEMA", Title = "Logs de Error", Icon = "bi bi-bug", Url = "admin/logs", Role = "Administrador", AccessKey = "L" },
+        new MenuOption { Section = "SISTEMA", Title = "Auditoría General", Icon = "bi bi-shield-lock", Url = "admin/auditoria", Role = "Administrador", AccessKey = "A" }
+    };
+}

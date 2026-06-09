@@ -1,0 +1,219 @@
+@page "/login"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@layout Blazor.Layout.LoginLayout
+@using Application.Features.Users
+@using Blazor.Security
+@using Blazor.Services
+@inject NavigationManager Navigation
+@inject AuthApiService AuthApiService
+@inject CustomAuthStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>Iniciar Sesión - PuntoVenta</PageTitle>
+
+<div class="uta-bg-wrapper">
+    <div class="uta-login-container">
+        <div class="uta-login-card @(_shakeForm ? "shake-animation" : "")">
+            <div class="uta-login-header">
+                <div class="uta-login-logo">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <h2 class="uta-login-title">Punto de Venta</h2>
+                <p class="uta-login-subtitle">Inicie sesión en su cuenta</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger py-2 mb-3 d-flex align-items-center" style="font-size: 0.85rem; border-radius: 8px;">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i> @_errorMessage
+                </div>
+            }
+
+            <EditForm Model="_loginRequest" OnValidSubmit="HandleLogin" class="uta-login-form">
+                <DataAnnotationsValidator />
+
+                <div class="uta-form-group">
+                    <label for="username" class="uta-form-label">Usuario</label>
+                    <div class="uta-input-wrapper">
+                        <i class="bi bi-person uta-input-icon"></i>
+                        <input type="text" id="username" class="uta-form-control" placeholder="ej: admin" autocomplete="username" @bind="_loginRequest.UserName" />
+                    </div>
+                </div>
+
+                <div class="uta-form-group">
+                    <label for="password" class="uta-form-label">Contraseña</label>
+                    <div class="uta-input-wrapper">
+                        <i class="bi bi-shield-lock uta-input-icon"></i>
+                        <input type="@(_showPassword ? "text" : "password")" id="password" class="uta-form-control" placeholder="••••••••" autocomplete="current-password" @bind="_loginRequest.Password" />
+                        <button type="button" class="btn text-muted position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent" @onclick="TogglePasswordVisibility">
+                            <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="uta-login-options">
+                    <label class="uta-checkbox-wrapper">
+                        <input type="checkbox" @bind="_rememberMe" />
+                        <span class="uta-checkbox-label">Recordarme</span>
+                    </label>
+                    <a href="/forgot-password" class="uta-forgot-password">¿Olvidó su contraseña?</a>
+                </div>
+
+                <button type="submit" class="uta-login-btn" disabled="@_isProcessing">
+                    @if (_isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Verificando...</span>
+                    }
+                    else
+                    {
+                        <span>Acceder al sistema</span>
+                    }
+                </button>
+
+                <div class="uta-login-divider">
+                    <span>o</span>
+                </div>
+
+                <button type="button" class="uta-microsoft-btn" @onclick="HandleMicrosoftLogin" disabled="@_isProcessing">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="MS Logo" width="18" />
+                    <span>Iniciar sesión con Microsoft</span>
+                </button>
+            </EditForm>
+            
+            <div class="uta-login-footer">
+                <p>&copy; @DateTime.Now.Year Sistema UTA POS. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest _loginRequest = new();
+    private bool _rememberMe;
+    private bool _isProcessing = false;
+    private string? _errorMessage;
+    private bool _showPassword = false;
+    private bool _shakeForm = false;
+    private int _failedAttempts = 0;
+    private DateTime? _lockoutEnd;
+
+    [SupplyParameterFromQuery]
+    public string? error { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? reason { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(error))
+        {
+            _errorMessage = error;
+        }
+
+        if (reason == "idle")
+        {
+            _ = Task.Run(async () => {
+                await Task.Delay(500); // Dar tiempo a que cargue la UI
+                await JS.InvokeVoidAsync("Swal.fire", new {
+                    title = "Sesión Expirada",
+                    text = "Su sesión se ha cerrado automáticamente por falta de actividad.",
+                    icon = "warning",
+                    toast = true,
+                    position = "top-end",
+                    showConfirmButton = false,
+                    timer = 5000,
+                    timerProgressBar = true
+                });
+            });
+        }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true && string.IsNullOrEmpty(reason))
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        _showPassword = !_showPassword;
+    }
+
+    private async Task HandleLogin()
+    {
+        if (_lockoutEnd.HasValue)
+        {
+            if (DateTime.Now < _lockoutEnd.Value)
+            {
+                _errorMessage = $"Cuenta bloqueada por demasiados intentos. Intente nuevamente después de las {_lockoutEnd.Value:HH:mm:ss}.";
+                await TriggerShakeAnimation();
+                return;
+            }
+            else
+            {
+                _lockoutEnd = null;
+                _failedAttempts = 0;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(_loginRequest.UserName) || string.IsNullOrWhiteSpace(_loginRequest.Password))
+        {
+            await TriggerShakeAnimation();
+            return;
+        }
+
+        _isProcessing = true;
+        _errorMessage = null;
+
+        var result = await AuthApiService.LoginAsync(_loginRequest);
+
+        if (result.IsSuccess && !string.IsNullOrEmpty(result.Token))
+        {
+            _failedAttempts = 0;
+            _lockoutEnd = null;
+            await AuthStateProvider.NotifyUserAuthentication(result.Token);
+            
+            // Guardar el Refresh Token para la autorenovación
+            if (!string.IsNullOrEmpty(result.RefreshToken))
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "refreshToken", result.RefreshToken);
+            }
+
+            Navigation.NavigateTo("/"); 
+        }
+        else
+        {
+            _failedAttempts++;
+            if (_failedAttempts >= 3)
+            {
+                _lockoutEnd = DateTime.Now.AddMinutes(1);
+                _errorMessage = $"Cuenta bloqueada por demasiados intentos. Intente nuevamente después de las {_lockoutEnd.Value:HH:mm:ss}.";
+            }
+            else
+            {
+                _errorMessage = result.Message;
+            }
+            await TriggerShakeAnimation();
+        }
+
+        _isProcessing = false;
+    }
+
+    private async Task TriggerShakeAnimation()
+    {
+        _shakeForm = false;
+        StateHasChanged();
+        await Task.Delay(10);
+        _shakeForm = true;
+        StateHasChanged();
+        await Task.Delay(400); 
+        _shakeForm = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleMicrosoftLogin()
+    {
+        Navigation.NavigateTo("authentication/login?returnUrl=/");
+    }
+}

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blazor</title>
+    <base href="/" />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/login.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="Blazor.styles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <noscript>
+        <div class="uta-loader-container" style="z-index: 9999; position: fixed; top: 0; left: 0;">
+            <div class="uta-loader-card"
+                style="border: 1px solid rgba(107, 26, 51, 0.3); box-shadow: 0 25px 50px -12px rgba(107, 26, 51, 0.2);">
+                <i class="bi bi-exclamation-triangle-fill"
+                    style="font-size: 4rem; color: #6B1A33; margin-bottom: 1rem; display: inline-block; filter: drop-shadow(0 4px 6px rgba(107, 26, 51, 0.2));"></i>
+                <h1 class="uta-loader-title" style="color: #1a1a1a;">JavaScript Desactivado</h1>
+                <p class="uta-loader-text" style="margin-top: 1rem; margin-bottom: 2rem;">
+                    Este sistema POS requiere <strong>JavaScript</strong> para funcionar correctamente.
+                    <br />Por favor, actívelo en la configuración de su navegador y recargue la página.
+                </p>
+                <a href="." class="btn w-100"
+                    style="background: linear-gradient(90deg, #8A1538, #6B1A33); color: white; border-radius: 12px; padding: 0.8rem; font-weight: 600; border: none; box-shadow: 0 4px 6px rgba(107, 26, 51, 0.2); text-decoration: none; display: block;">
+                    REINTENTAR
+                </a>
+            </div>
+        </div>
+    </noscript>
+    <style>
+        .uta-loader-container {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #f4f6f9 0%, #e2e8f0 100%);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .uta-loader-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 3.5rem;
+            border-radius: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            width: 90%;
+            max-width: 420px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            animation: uta-fade-in 0.8s ease-out;
+        }
+
+        .uta-loader-brand {
+            margin-bottom: 2.5rem;
+        }
+
+        .uta-loader-logo {
+            font-size: 4rem;
+            color: #6B1A33;
+            margin-bottom: 1rem;
+            display: inline-block;
+            filter: drop-shadow(0 4px 6px rgba(107, 26, 51, 0.2));
+        }
+
+        .uta-loader-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #1a1a1a;
+            margin: 0;
+            letter-spacing: -0.025em;
+        }
+
+        .uta-loader-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4.5px solid rgba(107, 26, 51, 0.1);
+            border-top-color: #6B1A33;
+            border-radius: 50%;
+            margin: 0 auto 2rem auto;
+            animation: uta-spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+        }
+
+        .uta-loader-text {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+
+        .uta-loader-progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .uta-loader-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8A1538, #6B1A33);
+            width: 40%;
+            position: absolute;
+            animation: uta-progress 1.8s ease-in-out infinite;
+        }
+
+        @keyframes uta-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes uta-fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes uta-progress {
+            0% {
+                left: -40%;
+                width: 30%;
+            }
+
+            50% {
+                left: 40%;
+                width: 60%;
+            }
+
+            100% {
+                left: 110%;
+                width: 30%;
+            }
+        }
+    </style>
+
+    <div id="app">
+        <div class="uta-loader-container">
+            <div class="uta-loader-card">
+                <div class="uta-loader-brand">
+                    <i class="bi bi-shop uta-loader-logo"></i>
+                    <h1 class="uta-loader-title">MI NEGOCIO POS</h1>
+                </div>
+                <div class="uta-loader-spinner"></div>
+                <p class="uta-loader-text">Preparando su entorno de trabajo...</p>
+                <div class="uta-loader-progress-bar">
+                    <div class="uta-loader-progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_content/Microsoft.Authentication.WebAssembly.Msal/AuthenticationService.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="js/shortcuts.js"></script>
+
+    <script>
+        window.navigationGuard = {
+            enable: function () {
+                window.onbeforeunload = function (e) {
+                    const message = "Hay cambios sin guardar. ¿Estás seguro de que quieres salir?";
+                    e.returnValue = message;
+                    return message;
+                };
+            },
+            disable: function () {
+                window.onbeforeunload = null;
+            }
+        };
+    </script>
+    <script>
+        var inactivityTimer;
+        window.setupInactivityTimer = (dotNetHelper, timeoutMinutes) => {
+            const timeoutMs = timeoutMinutes * 60 * 1000;
+            
+            function resetTimer() {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    dotNetHelper.invokeMethodAsync("LogoutUser");
+                }, timeoutMs);
+            }
+
+            // Eventos que reinician el contador
+            window.onload = resetTimer;
+            window.onmousemove = resetTimer;
+            window.onmousedown = resetTimer;
+            window.ontouchstart = resetTimer;
+            window.onclick = resetTimer;
+            window.onkeydown = resetTimer;
+            window.addEventListener('scroll', resetTimer, true);
+            
+            resetTimer(); // Iniciar por primera vez
+        };
+    </script>
+</body>
+
+</html>

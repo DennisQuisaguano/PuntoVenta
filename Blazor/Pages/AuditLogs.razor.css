@@ -1,0 +1,80 @@
+.card {
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.card-header {
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 0.75rem 1.25rem;
+}
+
+pre {
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: #fcfcfc;
+    border-radius: 0;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+/* --- GRID DE DATOS Y DIFERENCIAS --- */
+.uta-client-data-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    background: #f8f9fa;
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.uta-data-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.uta-data-item--full {
+    grid-column: 1 / -1;
+}
+
+.uta-data-item__label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.uta-data-item__value {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.uta-diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.uta-diff-grid--full {
+    grid-template-columns: 1fr;
+}
+
+@media (max-width: 768px) {
+    .uta-client-data-grid {
+        grid-template-columns: 1fr;
+    }
+    .uta-diff-grid {
+        grid-template-columns: 1fr;
+    }
+}

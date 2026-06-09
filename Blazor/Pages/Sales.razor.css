@@ -1,0 +1,1345 @@
+/* ====================================================
+  INICIO DE LOS ESTILOS DE PAGINACIÓN 
+   ==================================================== */
+
+.uta-pagination-footer {
+    background-color: #f8f9fa;
+    /* Fondo claro para contraste con el modal */
+    border-top: 1px solid #dee2e6;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+}
+
+/* Resaltado de información de registros */
+.uta-text-highlight {
+    color: #6B1A33 !important;
+    /* Rojo Vino UTA */
+    font-weight: 700;
+}
+
+/* Corrección Crítica del Selector de Página */
+.uta-select-wrapper {
+    position: relative;
+    width: 80px;
+}
+
+.uta-pagination-footer .form-select {
+    color: #212529 !important;
+    /* Texto oscuro siempre visible */
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+}
+
+/* Asegurar que las opciones dentro del select sean legibles */
+.uta-pagination-footer .form-select option {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+/* Botones de Navegación Estilo UTA */
+.uta-pagination-btn {
+    min-width: 40px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    color: #6B1A33;
+    border: 1px solid #dee2e6;
+    border-right: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.uta-pagination-btn:last-child {
+    border-right: 1px solid #dee2e6;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.uta-pagination-btn:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+/* Hover: Efecto suave en gris */
+.uta-pagination-btn:hover:not(.disabled):not(.uta-pagination-btn--active) {
+    background-color: #f1f3f5;
+    color: #521528;
+}
+
+/* ESTADO ACTIVO: Identidad UTA */
+.uta-pagination-btn--active {
+    background-color: #6B1A33 !important;
+    /* Rojo Vino */
+    color: #ffffff !important;
+    border-color: #6B1A33 !important;
+    z-index: 2;
+}
+
+/* Estado Deshabilitado */
+.uta-pagination-btn.disabled {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.uta-pagination-btn--ellipsis {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: default;
+}
+
+/* ====================================================
+  FINAL DE LOS ESTILOS DE PAGINACIÓN 
+==================================================== */
+
+.uta-stock-helper {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #6c757d;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: color 0.2s;
+}
+
+.uta-stock-helper:hover {
+    color: #6B1A33;
+    text-decoration: underline;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.uta-page {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f4f6f9;
+    min-height: 100vh;
+    padding: 1.8rem 2rem;
+    color: #2c3e50;
+}
+
+.uta-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.uta-breadcrumb {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+}
+
+.uta-breadcrumb__sep {
+    margin: 0 0.35rem;
+}
+
+.uta-breadcrumb__active {
+    color: #6B1A33;
+}
+
+.uta-page-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 0.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    letter-spacing: -0.5px;
+}
+
+.uta-page-title__icon {
+    font-size: 1.4rem;
+}
+
+.uta-page-subtitle {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.uta-page-header__right {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.text-warning {
+    color: #f59e0b !important;
+}
+
+.text-primary {
+    color: #3b82f6 !important;
+}
+
+.text-info {
+    color: #0891b2 !important;
+}
+
+/* ESTADÍSTICAS REDISEÑADAS */
+.uta-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.uta-stat-card {
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e9ecef;
+    transition: transform 0.2s;
+}
+
+.uta-stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.uta-stat-card__icon {
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.uta-stat-card__details {
+    display: flex;
+    flex-direction: column;
+}
+
+.uta-stat-card__number {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+
+.uta-stat-card__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.2rem;
+}
+
+.uta-stat-card--light {
+    background: #fff;
+    color: #1a1a1a;
+}
+
+.uta-stat-card--light .uta-stat-card__label {
+    color: #6c757d;
+}
+
+.uta-stat-card--dark {
+    background: #6B1A33;
+    color: #fff;
+    border-color: #521528;
+    box-shadow: 0 8px 15px rgba(107, 26, 51, 0.2);
+}
+
+.uta-stat-card--dark .uta-stat-card__label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.uta-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.uta-main-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.uta-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+}
+
+.uta-card--sticky {
+    position: sticky;
+    top: 1.5rem;
+}
+
+.uta-card__header {
+    background: #6B1A33;
+    color: #fff;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.uta-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.uta-card__header-icon {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.uta-card__body {
+    padding: 1.5rem;
+}
+
+.uta-card__body.p-0 {
+    padding: 0;
+}
+
+.uta-client-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.uta-client-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: #fdf5f7;
+    color: #6B1A33;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid #f3e1e6;
+}
+
+.uta-client-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    align-items: flex-start;
+}
+
+.uta-client-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.uta-client-data-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    background: #f8f9fa;
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.uta-data-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.uta-data-item--full {
+    grid-column: 1 / -1;
+}
+
+.uta-data-item__label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    font-weight: 700;
+}
+
+.uta-data-item__value {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #212529;
+}
+
+.uta-table-wrap {
+    overflow-x: auto;
+}
+
+.uta-table-wrap--bordered {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.uta-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.uta-table thead tr {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.uta-table th {
+    padding: 0.85rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #495057;
+    text-align: left;
+}
+
+.uta-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    color: #495057;
+    vertical-align: middle;
+}
+
+/* ALINEACIÓN DE PRECIOS Y MONEDA */
+.uta-price {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.uta-price--right {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.uta-price__symbol {
+    font-weight: 500;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.uta-price__value {
+    font-weight: inherit;
+}
+
+.uta-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.uta-table tbody tr:hover td {
+    background: #fdf5f7;
+}
+
+.uta-table__bold {
+    font-weight: 600;
+    color: #212529 !important;
+}
+
+.uta-table__empty {
+    text-align: center;
+    padding: 3rem !important;
+}
+
+.uta-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.uta-empty-state__icon {
+    font-size: 2.5rem;
+    color: #ced4da;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.uta-empty-state__text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.uta-empty-state__sub {
+    font-size: 0.8rem;
+    color: #adb5bd;
+}
+
+.uta-biz-info {
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.uta-biz-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.5px;
+}
+
+.uta-biz-detail {
+    font-size: 0.78rem;
+    color: #6c757d;
+    margin-bottom: 0.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+.uta-invoice-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+}
+
+.uta-invoice-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.uta-invoice-label {
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.uta-invoice-value {
+    color: #212529;
+    font-weight: 700;
+}
+
+.uta-invoice-value--code {
+    color: #6B1A33;
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: #fdf5f7;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.uta-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 1rem 0;
+    border-style: dashed;
+    border-width: 1px 0 0 0;
+    border-color: #dee2e6;
+}
+
+.uta-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.uta-totals__row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    color: #495057;
+    font-weight: 500;
+}
+
+.uta-totals__grand {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: #fff;
+    background: #6B1A33;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(107, 26, 51, 0.2);
+}
+
+.uta-hint {
+    font-size: 0.75rem;
+    color: #d97706;
+    text-align: center;
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+.uta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.uta-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+.uta-btn:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+.uta-btn--block {
+    width: 100%;
+}
+
+.uta-btn--sm {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+}
+
+.uta-btn--lg {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.9rem;
+}
+
+.uta-btn--primary {
+    background: #6B1A33;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(107, 26, 51, 0.2);
+}
+
+.uta-btn--primary:not(:disabled):hover {
+    background: #521528;
+    box-shadow: 0 4px 8px rgba(107, 26, 51, 0.3);
+}
+
+.uta-btn--success {
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+}
+
+.uta-btn--success:not(:disabled):hover {
+    background: #15803d;
+}
+
+.uta-btn--outline {
+    background: #fff;
+    color: #6B1A33;
+    border: 1px solid #6B1A33;
+}
+
+.uta-btn--outline:hover {
+    background: #fdf5f7;
+}
+
+.uta-btn--white {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.uta-btn--white:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.uta-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.uta-icon-btn--red {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.uta-icon-btn--red:hover {
+    background: #dc2626;
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.uta-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.uta-badge--green {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.uta-badge--red {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.uta-badge--yellow {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.uta-badge--blue {
+    background: #e0f2fe;
+    color: #1d4ed8;
+}
+
+.uta-badge--white-outline {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.uta-code-badge {
+    font-family: monospace;
+    font-size: 0.8rem;
+    background: #f1f3f5;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    color: #495057;
+    font-weight: 600;
+    border: 1px solid #e9ecef;
+}
+
+.uta-qty-input {
+    width: 70px;
+    padding: 0.35rem;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    outline: none;
+    color: #212529;
+    transition: border-color 0.2s;
+}
+
+.uta-qty-input:focus {
+    border-color: #6B1A33;
+    box-shadow: 0 0 0 3px rgba(107, 26, 51, 0.1);
+}
+
+.uta-qty-input--cart {
+    background-color: #f8f9fa;
+    border: 1px solid transparent;
+    font-weight: 700;
+    color: #6B1A33;
+    width: 60px;
+}
+
+.uta-qty-input--cart:hover {
+    border-color: #ced4da;
+}
+
+/* ====================================================
+   NOTIFICACIONES TOAST 
+   ==================================================== */
+.uta-toast-wrapper {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.uta-toast {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    position: relative;
+    overflow: hidden;
+    animation: toastEnter 0.5s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+@keyframes toastEnter {
+    from {
+        transform: translateX(100%) scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.uta-toast__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    background: #f8f9fa;
+}
+
+.uta-toast--success .uta-toast__icon {
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+.uta-toast--error .uta-toast__icon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.uta-toast__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding-top: 2px;
+}
+
+.uta-toast__title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.2px;
+}
+
+.uta-toast__message {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.uta-toast__close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1.2rem;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+    margin-top: -4px;
+    margin-right: -4px;
+}
+
+.uta-toast__close:hover {
+    color: #1a1a1a;
+    transform: rotate(90deg);
+}
+
+.uta-toast__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.uta-toast__progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    transform-origin: left;
+    animation: toastProgress 3s linear forwards;
+}
+
+.uta-toast--success .uta-toast__progress::after {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.uta-toast--error .uta-toast__progress::after {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+@keyframes toastProgress {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}
+
+.uta-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    backdrop-filter: blur(3px);
+    animation: fadeIn .2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.uta-modal {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalUp .3s cubic-bezier(.34, 1.4, .64, 1);
+}
+
+@keyframes modalUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.uta-modal--xl {
+    max-width: 1150px;
+}
+
+.uta-modal--lg {
+    max-width: 850px;
+}
+
+.uta-modal__header {
+    background: #6B1A33;
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.uta-modal__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.15rem;
+    display: flex;
+    align-items: center;
+}
+
+.uta-modal__subtitle {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.uta-modal__close {
+    background: rgba(255, 255, 255, .15);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .2s;
+}
+
+.uta-modal__close:hover {
+    background: rgba(255, 255, 255, .25);
+}
+
+.uta-modal__body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    background: #f8f9fa;
+}
+
+.uta-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background: #fff;
+    border-top: 1px solid #e9ecef;
+}
+
+.uta-page-info {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6B1A33;
+}
+
+.uta-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.25rem;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.uta-search-bar__select {
+    border: none;
+    background: #f8f9fa;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #495057;
+    padding: 0.6rem 1rem;
+    outline: none;
+    border-right: 1px solid #ced4da;
+    cursor: pointer;
+}
+
+.uta-search-bar__select:focus {
+    background: #e9ecef;
+}
+
+.uta-search-bar__input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    color: #212529;
+    padding: 0.6rem 1rem;
+    outline: none;
+    min-width: 0;
+}
+
+.uta-search-bar__input::placeholder {
+    color: #adb5bd;
+}
+
+.uta-search-bar__btn {
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0.6rem 1.5rem !important;
+    height: 100%;
+}
+
+@media (max-width: 1024px) {
+    .uta-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .uta-card--sticky {
+        position: static;
+    }
+
+    .uta-client-data-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .uta-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .uta-page {
+        padding: 1rem;
+    }
+
+    .uta-client-data-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .uta-search-bar {
+        flex-direction: column;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        gap: 0.5rem;
+    }
+
+    .uta-search-bar__select,
+    .uta-search-bar__input,
+    .uta-search-bar__btn {
+        width: 100%;
+        border: 1px solid #ced4da;
+        border-radius: 8px !important;
+    }
+}
+
+@media print {
+    .uta-page {
+        background: #fff;
+        padding: 0;
+    }
+
+    .uta-stat-card,
+    .uta-card__header,
+    .uta-totals__grand {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+.ms-2 {
+    margin-left: .5rem;
+}
+
+/* Estilos para listas dentro de modales y alertas */
+.uta-alert-list {
+    text-align: left;
+    margin-top: 1rem;
+    padding-left: 1.5rem;
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.uta-alert-list li {
+    margin-bottom: 0.5rem;
+}
+
+.uta-modal-text {
+    color: #1a1a1a;
+    font-weight: 500;
+    text-align: left;
+}
+
+.uta-modal-title {
+    font-family: 'Inter', sans-serif;
+    color: #6B1A33 !important;
+    /* Nuestro color de marca */
+    font-weight: 700 !important;
+}
+
+/* Ajuste de contenedor de SweetAlert para que parezca una uta-card */
+.uta-card--modal {
+    border-radius: 12px !important;
+    border: 1px solid #e9ecef !important;
+    padding: 2rem !important;
+}
+
+.uta-btn-pos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* Ajustamos el padding para que iguale al .uta-btn--lg (0.8rem 1.5rem) */
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    /* Usamos 8px para que coincida con .uta-btn */
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    gap: 10px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.uta-btn-pos--cancel {
+    background-color: transparent;
+    color: #6B1A33;
+    /* Usamos el rojo vino UTA de tu variable */
+    border: 1px solid #6B1A33;
+    margin-top: 10px;
+}
+
+
+/* Estilos para el separador de stock en el modal de ventas */
+.uta-table-separator-row {
+    padding: 0 !important;
+    background-color: #f8f9fa !important;
+}
+
+.uta-stock-separator {
+    background: linear-gradient(90deg, #6c757d 0%, #495057 100%);
+    color: white;
+    padding: 8px 15px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    border-left: 4px solid #dc3545;
+}
+
+.uta-stock-separator i {
+    font-size: 1rem;
+}
+
+
+
+/* ====================================================
+   SEPARADOR DE STOCK EN TABLAS
+   ==================================================== */
+.uta-table-separator-row {
+    padding: 0 !important;
+}
+
+.uta-stock-separator {
+    background: #f8fafc;
+    color: #64748b;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 0.5rem;
+}
+
+.uta-stock-separator i {
+    font-size: 0.9rem;
+    color: #94a3b8;
+}
+
+/* --- FORM STYLES --- */
+.uta-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+    .uta-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.uta-form-group {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.uta-form-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #495057;
+    margin-bottom: 0.4rem;
+}
+
+::deep .uta-form-control {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    color: #212529;
+    background-color: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+::deep .uta-form-control::placeholder {
+    color: #adb5bd;
+}
+
+::deep .uta-form-control:focus {
+    color: #212529;
+    background-color: #fff;
+    border-color: #6B1A33;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(107, 26, 51, 0.15);
+}
+
+::deep .uta-input-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+::deep .uta-input-icon {
+    position: absolute;
+    left: 1rem;
+    color: #6c757d;
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+::deep .uta-form-control--with-icon {
+    padding-left: 2.5rem;
+}

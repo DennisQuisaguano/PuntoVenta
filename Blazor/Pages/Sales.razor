@@ -1,0 +1,2014 @@
+@page "/ventas"
+@using Application.Features.Sales
+@using Application.Features.Products
+@using Application.Features.Customers
+@using Application.Common
+@using Blazor.Helpers
+@using Blazor.Models
+@using Blazor.Services
+@using System.Timers
+@using System.Text.Json
+@implements IDisposable
+@inject IJSRuntime JS
+@inject PosApiService ApiService
+@inject CustomerApiService CustomerApiService
+@inject NavigationManager NavManager
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject ShortcutService Shortcuts
+@attribute [Authorize(Roles = "Vendedor")]
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+@if (!string.IsNullOrEmpty(_alertMessage))
+{
+    <div class="uta-toast-wrapper">
+        <div class="uta-toast @(_isError ? "uta-toast--error" : "uta-toast--success")">
+            <div class="uta-toast__icon">
+                <i class="bi @(_isError ? "bi-exclamation-triangle-fill" : "bi-check2-circle")"></i>
+            </div>
+            <div class="uta-toast__body">
+                <div class="uta-toast__title">@(_isError ? "Atención" : "¡Éxito!")</div>
+                <div class="uta-toast__message">@_alertMessage</div>
+            </div>
+            <button class="uta-toast__close" @onclick="() => _alertMessage = string.Empty">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="uta-toast__progress"></div>
+        </div>
+    </div>
+}
+
+<div class="uta-page">
+    <div class="uta-page-header">
+        <div class="uta-page-header__left">
+            <div class="uta-breadcrumb">
+                <span>Panel Principal</span>
+                <span class="uta-breadcrumb__sep"></span>
+                <span class="uta-breadcrumb__active">Punto de Venta</span>
+            </div>
+            <h1 class="uta-page-title">
+                <i class="bi bi-cart-check text-warning uta-page-title__icon"></i>
+                Punto de Venta
+            </h1>
+            <p class="uta-page-subtitle">Registro y procesamiento de ventas al cliente</p>
+        </div>
+        <div class="uta-page-header__right d-print-none">
+            @if (!_saleCompleted)
+            {
+                <button class="uta-btn uta-btn--outline" @onclick="OpenDraftsModal" disabled="@_isProcessingSale" data-accesskey="R">
+                    <i class="bi bi-folder2-open"></i> &nbsp;Recuperar Borrador
+                    <span class="uta-keytip">R</span>
+                </button>
+                <button class="uta-btn uta-btn--primary" @onclick="SaveAsDraft" disabled="@(!CanFinalize || _isProcessingSale)" data-accesskey="G">
+                    <i class="bi bi-file-earmark-plus"></i> &nbsp;Guardar Borrador
+                    <span class="uta-keytip">G</span>
+                </button>
+                <button class="uta-btn uta-btn--success" @onclick="SellAndConfirm" disabled="@(!CanFinalize || _isProcessingSale)" data-accesskey="S">
+                    <i class="bi bi-cash-coin"></i> &nbsp;Vender y Cobrar
+                    <span class="uta-keytip">S</span>
+                </button>
+            }
+            else
+            {
+                <button class="uta-btn uta-btn--outline" @onclick="NewSale">
+                    <i class="bi bi-arrow-counterclockwise"></i> &nbsp;Nueva Venta
+                </button>
+                <button class="uta-btn uta-btn--success" @onclick="ViewInvoice">
+                    <i class="bi bi-receipt"></i> &nbsp;Ver Factura
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="uta-stats-row">
+        <div class="uta-stat-card uta-stat-card--light">
+            <div class="uta-stat-card__icon text-primary"><i class="bi bi-box-seam"></i></div>
+            <div class="uta-stat-card__details">
+                <div class="uta-stat-card__number">@_cart.Count</div>
+                <div class="uta-stat-card__label">Productos en Carrito</div>
+            </div>
+        </div>
+        <div class="uta-stat-card uta-stat-card--light">
+            <div class="uta-stat-card__icon text-warning"><i class="bi bi-calculator"></i></div>
+            <div class="uta-stat-card__details">
+                <div class="uta-stat-card__number">
+                    <div class="uta-price">
+                        <span class="uta-price__symbol">$</span>
+                        <span class="uta-price__value">@GlobalSubtotal.ToString("N2")</span>
+                    </div>
+                </div>
+                <div class="uta-stat-card__label">Subtotal Venta</div>
+            </div>
+        </div>
+        <div class="uta-stat-card uta-stat-card--light">
+            <div class="uta-stat-card__icon text-info"><i class="bi bi-percent"></i></div>
+            <div class="uta-stat-card__details">
+                <div class="uta-stat-card__number">
+                    <div class="uta-price">
+                        <span class="uta-price__symbol">$</span>
+                        <span class="uta-price__value">@GlobalVat.ToString("N2")</span>
+                    </div>
+                </div>
+                <div class="uta-stat-card__label">Impuestos (IVA @(VatRatePercentage)%)</div>
+            </div>
+        </div>
+        <div class="uta-stat-card uta-stat-card--dark">
+            <div class="uta-stat-card__icon"><i class="bi bi-cash-coin"></i></div>
+            <div class="uta-stat-card__details">
+                <div class="uta-stat-card__number">
+                    <div class="uta-price">
+                        <span class="uta-price__symbol">$</span>
+                        <span class="uta-price__value">@FinalTotal.ToString("N2")</span>
+                    </div>
+                </div>
+                <div class="uta-stat-card__label">Monto Total a Pagar</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="uta-content-grid">
+        <div class="uta-main-col">
+            <div class="uta-card">
+                <div class="uta-card__header">
+                    <div class="uta-card__header-left">
+                        <i class="bi bi-person-badge uta-card__header-icon"></i>
+                        Datos del Cliente
+                    </div>
+                    @if (!_saleCompleted)
+                    {
+                        <button class="uta-btn uta-btn--sm uta-btn--white d-print-none" style="position: relative;" @onclick="OpenCustomerModal" data-accesskey="A">
+                            <i class="bi bi-person-plus"></i> &nbsp;Agregar Cliente
+                            <span class="uta-keytip">A</span>
+                        </button>
+                    }
+                </div>
+                <div class="uta-card__body">
+                    <div class="uta-client-header">
+                        <div class="uta-client-avatar">
+                            @(_selectedCustomerEntity?.Name?.Length > 0 && _selectedCustomerEntity?.LastName?.Length > 0 ? $"{_selectedCustomerEntity.Name[0]}{_selectedCustomerEntity.LastName[0]}" : "CF")
+                        </div>
+                        <div class="uta-client-title">
+                            <h4 class="uta-client-name">
+                                @(_selectedCustomerEntity != null ? $"{_selectedCustomerEntity.Name} {_selectedCustomerEntity.LastName}" : "CONSUMIDOR FINAL")
+                            </h4>
+                            <span class="uta-badge uta-badge--blue">@(_selectedCustomerEntity != null ? "Cliente Registrado" : "Venta Estándar")</span>
+                        </div>
+                    </div>
+                    
+                    <div class="uta-client-data-grid">
+                        <div class="uta-data-item">
+                            <span class="uta-data-item__label">Cédula </span>
+                            <span class="uta-data-item__value">@(_selectedCustomerEntity != null ? _selectedCustomerEntity.IDCard : "-")</span>
+                        </div>
+                        <div class="uta-data-item">
+                            <span class="uta-data-item__label">Teléfono</span>
+                            <span class="uta-data-item__value">@(_selectedCustomerEntity != null && !string.IsNullOrEmpty(_selectedCustomerEntity.Phone) ? _selectedCustomerEntity.Phone : "-")</span>
+                        </div>
+                        <div class="uta-data-item">
+                            <span class="uta-data-item__label">Correo Electrónico</span>
+                            <span class="uta-data-item__value">@(_selectedCustomerEntity != null && !string.IsNullOrEmpty(_selectedCustomerEntity.Email) ? _selectedCustomerEntity.Email : "-")</span>
+                        </div>
+                        <div class="uta-data-item uta-data-item--full">
+                            <span class="uta-data-item__label">Dirección Completa</span>
+                            <span class="uta-data-item__value">@(_selectedCustomerEntity != null && !string.IsNullOrEmpty(_selectedCustomerEntity.Address) ? _selectedCustomerEntity.Address : "-")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="uta-card">
+                <div class="uta-card__header">
+                    <div class="uta-card__header-left">
+                        <i class="bi bi-cart4 uta-card__header-icon"></i>
+                        Detalle de Productos
+                        @if (_cart.Any())
+                        {
+                            <span class="uta-badge uta-badge--white-outline ms-2">@_cart.Count items</span>
+                        }
+                    </div>
+                    @if (!_saleCompleted)
+                    {
+                        <button class="uta-btn uta-btn--sm uta-btn--white d-print-none" style="position: relative;" @onclick="async () => await OpenProductModal()" data-accesskey="Q">
+                            <i class="bi bi-plus-lg"></i> &nbsp;Agregar Producto
+                            <span class="uta-keytip">Q</span>
+                        </button>
+                    }
+                </div>
+                <div class="uta-card__body p-0">
+
+                    <div class="uta-table-wrap">
+                        <table class="uta-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:80px">Código</th>
+                                    <th style="width:60px;text-align:center">Cant.</th>
+                                    <th style="width:80px;text-align:center">Stock</th>
+                                    <th>Descripción</th>
+                                    <th style="text-align:right;width:120px">P. Unitario</th>
+                                    <th style="text-align:right;width:120px">P. Total</th>
+                                    @if (!_saleCompleted) { <th style="width:44px" class="d-print-none"></th> }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!_cart.Any())
+                                {
+                                    <tr>
+                                        <td colspan="7" class="uta-table__empty">
+                                            <div class="uta-empty-state">
+                                                <div class="uta-empty-state__icon"><i class="bi bi-box-seam"></i></div>
+                                                <div class="uta-empty-state__text">El carrito está vacío</div>
+                                                <div class="uta-empty-state__sub">Presione "Agregar Producto" para comenzar a facturar</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var item in PagedCart)
+                                {
+                                    <tr>
+                                        <td><span class="uta-code-badge">@item.ProductId.ToString("D4")</span></td>
+                                        <td style="text-align:center">
+                                            @if (!_saleCompleted)
+                                            {
+                                                <input class="uta-qty-input uta-qty-input--cart" 
+                                                       type="number" 
+                                                       value="@item.Amount" 
+                                                       @oninput="@((e) => UpdateQuantity(item, e))"
+                                                       min="1"
+                                                       onkeypress="return (event.charCode >= 48 && event.charCode <= 57)" />
+                                            }
+                                            else
+                                            {
+                                                <span>@item.Amount</span>
+                                            }
+                                        </td>
+                                        <td style="text-align:center">
+                                            @if (!_saleCompleted)
+                                            {
+                                                <span class="uta-badge @(item.AvailableStock > 0 ? "uta-badge--green" : "uta-badge--red")" 
+                                                      @onclick="() => { item.Amount = item.AvailableStock; RecalculateInvoiceTotals(); }" 
+                                                      style="cursor:pointer" title="Haga clic para vender todo el stock disponible">
+                                                    @item.AvailableStock uds.
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td class="uta-table__bold">@item.ProductName</td>
+
+                                        <td style="text-align:right;color:#666">
+                                            <div class="uta-price uta-price--right">
+                                                <span class="uta-price__symbol">$</span>
+                                                <span class="uta-price__value">@item.UnitPrice.ToString("N2")</span>
+                                            </div>
+                                        </td>
+
+                                        <td style="text-align:right;font-weight:600;color:#1a1a1a">
+                                            <div class="uta-price uta-price--right">
+                                                <span class="uta-price__symbol">$</span>
+                                                <span class="uta-price__value">@item.SubTotal.ToString("N2")</span>
+                                            </div>
+                                        </td>
+                                        @if (!_saleCompleted)
+                                        {
+                                            <td class="d-print-none" style="text-align:center">
+                                                <button class="uta-icon-btn uta-icon-btn--red" title="Quitar" @onclick="() => RemoveFromCart(item)">
+                                                    <i class="bi bi-trash3-fill"></i>
+                                                </button>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (_cart.Any())
+                    {
+                        <div class="uta-pagination-footer d-print-none">
+                            <div class="uta-pagination-info">
+                                <span class="small text-muted">
+                                    Se muestran <strong class="uta-text-highlight">@CartFrom</strong> a <strong class="uta-text-highlight">@CartTo</strong> de <strong class="uta-text-highlight">@_cart.Count</strong> productos
+                                </span>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small text-muted">por página</span>
+                                <div class="uta-select-wrapper">
+                                    <select class="form-select form-select-sm shadow-none" @onchange="OnCartPageSizeChanged">
+                                        @foreach (var size in new[] { 5, 10, 25 })
+                                        {
+                                            <option value="@size" selected="@(_cartPageSize == size)">@size</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-flex overflow-hidden">
+                                @foreach (var p in VisiblePagesCart)
+                                {
+                                    if (p == -1)
+                                    {
+                                        <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                                    }
+                                    else
+                                    {
+                                        var pNum = p;
+                                        <button class="uta-pagination-btn @(pNum == _currentCartPage ? "uta-pagination-btn--active" : "")"
+                                                @onclick="() => GoToCartPage(pNum)">@pNum</button>
+                                    }
+                                }
+                                <button class="uta-pagination-btn @(!HasNextCartPage ? "disabled" : "")"
+                                        @onclick="() => GoToCartPage(_currentCartPage + 1)"
+                                        disabled="@(!HasNextCartPage)">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="uta-side-col">
+            <div class="uta-card uta-card--sticky">
+                <div class="uta-card__header">
+                    <div class="uta-card__header-left">
+                        <i class="bi bi-clipboard2-data uta-card__header-icon"></i>
+                        Resumen de Transacción
+                    </div>
+                </div>
+                <div class="uta-card__body">
+                    <div class="uta-biz-info mb-3">
+                        <div class="uta-biz-name"><i class="bi bi-shop"></i> MI NEGOCIO POS</div>
+                        <div class="uta-biz-detail"><i class="bi bi-geo-alt-fill"></i> Calle Principal y Secundaria</div>
+                        <div class="uta-biz-detail"><i class="bi bi-telephone-fill"></i> 0999 999 999</div>
+                        <div class="uta-biz-detail"><i class="bi bi-file-earmark-text-fill"></i> RUC: 9999999999001</div>
+                    </div>
+
+                    <div class="uta-divider"></div>
+
+                    <div class="uta-invoice-meta">
+                        <div class="uta-invoice-row">
+                            <span class="uta-invoice-label">Documento</span>
+                            <span class="uta-invoice-value text-danger">FACTURA</span>
+                        </div>
+                        <div class="uta-invoice-row">
+                            <span class="uta-invoice-label">Número</span>
+                            <span class="uta-invoice-value uta-invoice-value--code">@_invoiceNumber</span>
+                        </div>
+                        <div class="uta-invoice-row">
+                            <span class="uta-invoice-label">Emisión</span>
+                            <span class="uta-invoice-value">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <div class="uta-invoice-row mt-1">
+                            <span class="uta-invoice-label">Estado Actual</span>
+                            <span class="uta-badge @(GetStatusBadgeClass())">
+                                @if (_saleStatus == Domain.Enums.SaleStatus.Draft)
+                                {
+                                    <i class="bi bi-hourglass-split me-1"></i> <span>Borrador</span>
+                                }
+                                else if (_saleStatus == Domain.Enums.SaleStatus.Confirmed)
+                                {
+                                    <i class="bi bi-check-circle-fill me-1"></i> <span>Confirmed</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-x-circle-fill me-1"></i> <span>Cancelled</span>
+                                }
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="uta-divider"></div>
+
+                    <div class="uta-totals">
+                        <div class="uta-totals__row">
+                            <span>Subtotal</span>
+                            <span class="uta-price uta-price--right">
+                                <span class="uta-price__symbol">$</span>
+                                <span class="uta-price__value">@GlobalSubtotal.ToString("N2")</span>
+                            </span>
+                        </div>
+                        <div class="uta-totals__row">
+                            <span>IVA @(VatRatePercentage)%</span>
+                            <span class="uta-price uta-price--right">
+                                <span class="uta-price__symbol">$</span>
+                                <span class="uta-price__value">@GlobalVat.ToString("N2")</span>
+                            </span>
+                        </div>
+                        <div class="uta-totals__grand mt-2">
+                            <span>TOTAL A PAGAR</span>
+                            <span class="uta-price uta-price--right">
+                                <span class="uta-price__symbol">$</span>
+                                <span class="uga-price__summary-value">@FinalTotal.ToString("N2")</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="d-print-none" style="margin-top: 1.5rem">
+                        @if (!_saleCompleted)
+                        {
+                            <button class="uta-btn uta-btn--success uta-btn--lg w-100 mb-2" 
+                                    style="position: relative;"
+                                    @onclick="SellAndConfirm" 
+                                    disabled="@(!CanFinalize || _isProcessingSale)">
+                                @if (_isProcessingSale)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> <span>PROCESANDO...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-cash-coin"></i> <span>VENDER Y COBRAR</span>
+                                    <span class="uta-keytip">F8</span>
+                                }
+                            </button>
+
+                            <button class="uta-btn uta-btn--primary uta-btn--block mb-2" 
+                                    style="position: relative;"
+                                    @onclick="SaveAsDraft" 
+                                    disabled="@(!CanFinalize || _isProcessingSale)">
+                                <i class="bi bi-file-earmark-plus"></i> <span>GUARDAR BORRADOR</span>
+                                <span class="uta-keytip">F9</span>
+                            </button>
+
+                            <button type="button" 
+                                    class="uta-btn-pos uta-btn-pos--cancel w-100" 
+                                    style="position: relative;"
+                                    @onclick="CancelForm"
+                                    disabled="@_isProcessingSale">
+                                <i class="bi bi-trash"></i> DESCARTAR TODO
+                                <span class="uta-keytip">F10</span>
+                            </button>
+                        }
+                        else
+                        {
+                            @if (_saleStatus == Domain.Enums.SaleStatus.Draft)
+                            {
+                                <button class="uta-btn uta-btn--success uta-btn--block uta-btn--lg mb-2" 
+                                        style="position: relative;"
+                                        @onclick="ConfirmDraft"
+                                        disabled="@_isProcessingSale"
+                                        data-accesskey="C">
+                                    @if (_isProcessingSale)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> <span>CONFIRMANDO...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-cash-coin"></i> <span>CONFIRMAR Y COBRAR</span>
+                                        <span class="uta-keytip">C</span>
+                                    }
+                                </button>
+                            }
+
+                            <button class="uta-btn uta-btn--outline uta-btn--block mb-2" style="position: relative;" @onclick="ViewInvoice" data-accesskey="P">
+                                <i class="bi bi-receipt"></i> &nbsp; VER FACTURA
+                                <span class="uta-keytip">P</span>
+                            </button>
+                            <button class="uta-btn uta-btn--light uta-btn--block" style="position: relative;" @onclick="NewSale" data-accesskey="N">
+                                <i class="bi bi-plus-circle"></i> &nbsp; NUEVA VENTA
+                                <span class="uta-keytip">N</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-print-none">
+
+    @if (_showCustomerModal)
+    {
+        <div class="uta-overlay" @onclick="CloseCustomerModal">
+            <div class="uta-modal uta-modal--xl" @onclick:stopPropagation="true">
+                <div class="uta-modal__header">
+                    @if (_isCreatingCustomer)
+                    {
+                        <div>
+                            <h3 class="uta-modal__title"><i class="bi bi-person-plus"></i> &nbsp;Nuevo Cliente</h3>
+                            <p class="uta-modal__subtitle">Complete los datos solicitados a continuación</p>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="uta-modal__close" @onclick="() => _isCreatingCustomer = false"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <h3 class="uta-modal__title"><i class="bi bi-people-fill"></i> &nbsp;Directorio de Clientes</h3>
+                            <p class="uta-modal__subtitle">Busque y seleccione el cliente para esta venta</p>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="uta-btn uta-btn--outline" style="background: rgba(255,255,255,0.9); color: #6B1A33; border: none; font-size: 0.8rem; padding: 0.4rem 0.8rem; position: relative;" @onclick="() => { _isCreatingCustomer = true; _newCustomer = new CreateCustomerRequest(); }" data-accesskey="N">
+                                <i class="bi bi-person-plus-fill"></i> &nbsp;Nuevo
+                                <span class="uta-keytip">N</span>
+                            </button>
+                            <button class="uta-modal__close" @onclick="CloseCustomerModal"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                    }
+                </div>
+
+                @if (_isCreatingCustomer)
+                {
+                    <div class="uta-modal__body">
+                        <div class="uta-form-grid">
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Cédula</label>
+                                <div class="uta-input-icon-wrapper">
+                                    <i class="bi bi-person-vcard uta-input-icon"></i>
+                                    <input class="uta-form-control uta-form-control--with-icon @(HasNewCustomerError("IDCard") ? "is-invalid" : "")" 
+                                           type="text" 
+                                           value="@_newCustomer.IDCard" 
+                                           @oninput="OnNewCustomerIDCardInput"
+                                           onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                           placeholder="10 DÍGITOS" maxlength="@ValidationConstants.IDCardLength" />
+                                </div>
+                                @if (HasNewCustomerError("IDCard"))
+                                {
+                                    <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetNewCustomerError("IDCard")</div>
+                                }
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Correo Electrónico</label>
+                                <div class="uta-input-icon-wrapper">
+                                    <i class="bi bi-envelope uta-input-icon"></i>
+                                    <input class="uta-form-control uta-form-control--with-icon @(HasNewCustomerError("Email") ? "is-invalid" : "")" 
+                                           type="text" 
+                                           value="@_newCustomer.Email" 
+                                           @oninput="OnNewCustomerEmailInput" 
+                                           placeholder="correo@ejemplo.com" maxlength="@ValidationConstants.EmailMax" />
+                                </div>
+                                @if (HasNewCustomerError("Email"))
+                                {
+                                    <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetNewCustomerError("Email")</div>
+                                }
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Nombre</label>
+                                <div class="uta-input-icon-wrapper">
+                                    <i class="bi bi-person uta-input-icon"></i>
+                                    <input class="uta-form-control uta-form-control--with-icon @(HasNewCustomerError("Name") ? "is-invalid" : "")" 
+                                           type="text" 
+                                           value="@_newCustomer.Name" 
+                                           @oninput="OnNewCustomerNameInput" 
+                                           onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241 || event.charCode == 193 || event.charCode == 201 || event.charCode == 205 || event.charCode == 211 || event.charCode == 218 || event.charCode == 225 || event.charCode == 233 || event.charCode == 237 || event.charCode == 243 || event.charCode == 250"
+                                           placeholder="NOMBRE" maxlength="@ValidationConstants.NameMax" />
+                                </div>
+                                @if (HasNewCustomerError("Name"))
+                                {
+                                    <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetNewCustomerError("Name")</div>
+                                }
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Apellido</label>
+                                <div class="uta-input-icon-wrapper">
+                                    <i class="bi bi-person uta-input-icon"></i>
+                                    <input class="uta-form-control uta-form-control--with-icon @(HasNewCustomerError("LastName") ? "is-invalid" : "")" 
+                                           type="text" 
+                                           value="@_newCustomer.LastName" 
+                                           @oninput="OnNewCustomerLastNameInput" 
+                                           onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241 || event.charCode == 193 || event.charCode == 201 || event.charCode == 205 || event.charCode == 211 || event.charCode == 218 || event.charCode == 225 || event.charCode == 233 || event.charCode == 237 || event.charCode == 243 || event.charCode == 250"
+                                           placeholder="APELLIDO" maxlength="@ValidationConstants.LastNameMax" />
+                                </div>
+                                @if (HasNewCustomerError("LastName"))
+                                {
+                                    <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetNewCustomerError("LastName")</div>
+                                }
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Teléfono</label>
+                                <div class="uta-input-icon-wrapper">
+                                    <i class="bi bi-telephone uta-input-icon"></i>
+                                    <input class="uta-form-control uta-form-control--with-icon @(HasNewCustomerError("Phone") ? "is-invalid" : "")" 
+                                           type="text" 
+                                           value="@_newCustomer.Phone" 
+                                           @oninput="OnNewCustomerPhoneInput"
+                                           onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                           placeholder="EJ. 0999999999" maxlength="@ValidationConstants.PhoneLength" />
+                                </div>
+                                @if (HasNewCustomerError("Phone"))
+                                {
+                                    <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetNewCustomerError("Phone")</div>
+                                }
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Dirección Domiciliaria (@(ValidationConstants.AddressMax - (_newCustomer.Address?.Length ?? 0)))</label>
+                                <div class="uta-input-icon-wrapper">
+                                    <i class="bi bi-geo-alt uta-input-icon"></i>
+                                    <input class="uta-form-control uta-form-control--with-icon" 
+                                           type="text" 
+                                           value="@_newCustomer.Address" 
+                                           @oninput="OnNewCustomerAddressInput" 
+                                           placeholder="DIRECCIÓN COMPLETA" maxlength="@ValidationConstants.AddressMax" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 d-flex justify-content-end gap-2">
+                            <button type="button" class="uta-btn uta-btn--outline" @onclick="() => _isCreatingCustomer = false">
+                                Cancelar
+                            </button>
+                            <button class="uta-btn uta-btn--primary" @onclick="SaveNewCustomerAsync" disabled="@(_isSavingCustomer || _newCustomerErrors.Any())">
+                                @if (_isSavingCustomer)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="bi bi-check2"></i> Guardar Cliente
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="uta-modal__body">
+                        <div class="uta-search-bar" style="position: relative;">
+                        <select class="uta-search-bar__select" @bind="CustomerSearchCriterion" data-accesskey="T">
+                            <option value="card">Cédula</option>
+                            <option value="name">Apellido</option>
+                            <option value="id">ID Interno</option>
+                        </select>
+                        <span class="uta-keytip" style="top: 10px; left: 10px;">T</span>
+
+                        <input class="uta-search-bar__input" 
+                               type="text" 
+                               value="@_customerTerm"
+                               @oninput="InputCustomerSearch"
+                               maxlength="@(CustomerSearchCriterion == "name" ? 25 : 10)"
+                               onkeypress="@GetOnKeyPressHandler(CustomerSearchCriterion)"
+                               @onkeydown="HandleCustomerSearchKey"
+                               placeholder="Escriba para filtrar clientes..."
+                               data-accesskey="B"/>
+                        <span class="uta-keytip" style="top: 10px; right: 50px; left: auto;">B</span>
+
+                        <button class="uta-btn uta-btn--primary uta-search-bar__btn" @onclick="LoadClientsAsync">
+                            <i class="bi bi-search"></i>
+                        </button>
+
+                    </div>
+                    <div class="uta-table-wrap uta-table-wrap--bordered">
+                        <table class="uta-table uta-table--sync-hover">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px; text-align: center;">Código (ID)</th>
+                                    <th>Nombre Completo</th>
+                                    <th style="text-align:center">Cédula</th>
+                                    <th style="text-align:center">Teléfono</th>
+                                    <th>Dirección</th>
+                                    <th>Correo</th>
+                                    <th style="text-align:center">Acción</th>
+                                </tr>   
+                            </thead>
+                            <tbody>
+                                @if (!PagedCustomers.Any() && !string.IsNullOrEmpty(_customerTerm))
+                                {
+                                    <tr>
+                                        <td colspan="7" class="uta-table__empty">
+                                            <div class="uta-empty-state">
+                                                <div class="uta-empty-state__icon"><i class="bi bi-search"></i></div>
+                                                <div class="uta-empty-state__text">Sin resultados para "@_customerTerm"</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                                @{ int rowIndex = 0; }
+                                @foreach (var c in PagedCustomers)
+                                {
+                                    int currentIndex = rowIndex;
+                                    <tr class="@(_focusedCustomerRowIndex == currentIndex ? "uta-table-row--focused" : "")"
+                                        @onmouseenter="() => _focusedCustomerRowIndex = currentIndex">
+                                        <td style="text-align:center"><span class="uta-code-badge">@c.Id.ToString("D3")</span></td>
+                                        <td class="uta-table__bold"> @c.LastName @c.Name</td>
+                                        <td style="text-align:center"><span class="uta-code-badge">@c.IDCard</span></td>
+                                        <td style="text-align:center;color:#666">@(string.IsNullOrEmpty(c.Phone) ? "-" : c.Phone)</td>
+                                        <td style="color:#666">@(string.IsNullOrEmpty(c.Address) ? "-" : c.Address)</td>
+                                        <td style="color:#666">@(string.IsNullOrEmpty(c.Email) ? "-" : c.Email)</td>
+                                        <td style="text-align:center">
+                                            <button class="uta-btn uta-btn--sm uta-btn--success" @onclick="() => SelectCustomer(c)">
+                                                <i class="bi bi-check2"></i> Seleccionar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    rowIndex++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                @if (_totalCustomerItems > 0 && !_isCreatingCustomer)
+                {
+                    <div class="uta-pagination-footer rounded-bottom">
+    
+    @* Info de resultados para Clientes *@
+    <div class="uta-pagination-info">
+        <span class="small text-muted">
+            Se muestran <strong class="uta-text-highlight">@CustomerFrom</strong> a <strong class="uta-text-highlight">@CustomerTo</strong> de <strong class="uta-text-highlight">@_totalCustomerItems</strong> resultados
+        </span>
+    </div>
+
+    @* Selector de tamao de pgina para Clientes *@
+    <div class="d-flex align-items-center gap-2">
+        <span class="small text-muted">por página</span>
+        <div class="uta-select-wrapper">
+            <select class="form-select form-select-sm shadow-none" 
+                    @onchange="OnCustomerPageSizeChanged">
+                @foreach (var size in new[] { 5, 10, 25, 50 })
+                {
+                    <option value="@size" selected="@(_customerItemsPerPage == size)">@size</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @* Navegacin con Ellipsis usando tu PaginationHelper *@
+    <div class="d-flex overflow-hidden">
+        @foreach (var p in VisiblePagesCustomer)
+        {
+            if (p == -1)
+            {
+                <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+            }
+            else
+            {
+                var pNum = p;
+                <button class="uta-pagination-btn @(pNum == _currentCustomerPageIdx ? "uta-pagination-btn--active" : "")"
+                        @onclick="() => GoToCustomerPage(pNum)">@pNum</button>
+            }
+        }
+        <button class="uta-pagination-btn @(!HasNextCustomerPage ? "disabled" : "")"
+                @onclick="() => GoToCustomerPage(_currentCustomerPageIdx + 1)"
+                disabled="@(!HasNextCustomerPage)">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+</div>
+                }
+                    }
+            </div>
+        </div>
+    }
+
+@* Catlogo de Productos Paginado *@
+@if (_showProductModal)
+{
+    <div class="uta-overlay" @onclick="CloseProductModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-boxes"></i> &nbsp;Catálogo de Productos</h3>
+                    <p class="uta-modal__subtitle">Búsqueda optimizada por Descripción o Código ID</p>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseProductModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="uta-modal__body">
+                <div class="uta-search-bar mb-3" style="position: relative;">
+                    <select class="uta-search-bar__select" @bind="ProductSearchCriterion" data-accesskey="T">
+                        <option value="name">Descripción</option>
+                        <option value="id">Código ID</option>
+                    </select>
+                    <span class="uta-keytip" style="top: 10px; left: 10px;">T</span>
+                    <input class="uta-search-bar__input" 
+                           type="text" 
+                           value="@_searchTerm" 
+                           @oninput="OnInputSearch"
+                           @onkeydown="HandleProductSearchKey"
+                           onkeypress="@GetOnKeyPressHandler(ProductSearchCriterion)"
+                           placeholder="Escriba para buscar..."
+                           data-accesskey="B"/>
+                    <span class="uta-keytip" style="top: 10px; right: 50px; left: auto;">B</span>
+                    <button class="uta-btn uta-btn--primary uta-search-bar__btn" @onclick="SearchProductsInApi">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+
+                @* Marcado del Modal Optimizado *@
+                <div class="uta-table-wrap uta-table-wrap--bordered">
+                    <table class="uta-table uta-table--sync-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Código (ID)</th>
+                                <th>Descripción</th>
+                                <th style="text-align:right">Precio</th>
+                                <th style="text-align:center">Stock Disp.</th>
+                                <th style="text-align:center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int rowIndex = 0; }
+                            @foreach (var p in _productResults)
+                            {
+                                int currentIndex = rowIndex;
+                                <tr @key="p.Id" class="@(_focusedProductRowIndex == currentIndex ? "uta-table-row--focused" : "")"
+                                    @onmouseenter="() => _focusedProductRowIndex = currentIndex">
+                                    @* Resaltamos el ID para facilitar la bsqueda visual *@
+                                    <td><span class="uta-code-badge">@p.Id.ToString("D4")</span></td>
+                                    <td class="uta-table__bold">@p.Name</td>
+                                    <td style="text-align:right">
+                                        <div class="uta-price uta-price--right">
+                                            <span class="uta-price__symbol">$</span>
+                                            <span class="uta-price__value">@p.UnitPrice.ToString("N2")</span>
+                                        </div>
+                                    </td>
+                                    <td style="text-align:center">
+                                        <span class="uta-badge @(p.Stock > 0 ? "uta-badge--green" : "uta-badge--red")">
+                                            @p.Stock uds.
+                                        </span>
+                                    </td>
+                                    <td style="text-align:center">
+                                        @* El botn solo aade 1 unidad por defecto. SRP: La edicin va en la grilla principal *@
+                                        <button class="uta-btn uta-btn--sm uta-btn--primary" 
+                                                @onclick="() => AddSimpleProduct(p)" 
+                                                disabled="@(p.Stock <= 0)">
+                                            <i class="bi bi-plus-lg"></i> Añadir
+                                        </button>
+                                    </td>
+                                </tr>
+                                rowIndex++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* Footer: Paginacin Basada en Servidor (Fase C & E) *@
+            @if (_totalItems > 0)
+            {
+                <div class="uta-pagination-footer rounded-bottom">
+        
+                    @* Info: Uso de clases semnticas para evitar hardcoding *@
+                    <div class="uta-pagination-info">
+                        <span class="small text-muted">
+                            Se muestran <strong class="uta-text-highlight">@From</strong> a <strong class="uta-text-highlight">@To</strong> de <strong class="uta-text-highlight">@_totalItems</strong> resultados
+                        </span>
+                    </div>
+
+                    @* Tamao de pgina: Estructura corregida para legibilidad en el selector *@
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">por página</span>
+                        <div class="uta-select-wrapper">
+                            <select class="form-select form-select-sm shadow-none" 
+                                    @onchange="OnPageSizeChanged">
+                                @foreach (var size in new[] { 5, 10, 25, 50 })
+                                {
+                                    <option value="@size" selected="@(_pageSize == size)">@size</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @* Controles con ellipsis: Lgica delegada al Helper *@
+                    <div class="d-flex overflow-hidden">
+                        @foreach (var p in GenerateVisiblePages)
+                        {
+                            if (p == -1)
+                            {
+                                <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                            }
+                            else
+                            {
+                                var pNum = p;
+                                <button class="uta-pagination-btn @(pNum == _currentPage ? "uta-pagination-btn--active" : "")"
+                                        @onclick="() => ChangePage(pNum)">@pNum</button>
+                            }
+                        }
+                        <button class="uta-pagination-btn @(!HasNextPage ? "disabled" : "")"
+                                @onclick="() => ChangePage(_currentPage + 1)"
+                                disabled="@(!HasNextPage)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+</div>
+
+@if (_showDraftsModal)
+{
+    <div class="uta-overlay" @onclick="CloseDraftsModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-folder2-open"></i> &nbsp;Recuperar Borrador</h3>
+                    <p class="uta-modal__subtitle">Seleccione un borrador guardado para continuar editando</p>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseDraftsModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="uta-modal__body">
+                <div class="uta-table-wrap uta-table-wrap--bordered">
+                    <table class="uta-table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th style="text-align:right">Total</th>
+                                <th style="text-align:center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_isLoadingDrafts)
+                            {
+                                <tr>
+                                    <td colspan="5" class="uta-table__empty">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else if (!_draftResults.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="uta-table__empty">
+                                        <div class="uta-empty-state">
+                                            <div class="uta-empty-state__icon"><i class="bi bi-folder-x"></i></div>
+                                            <div class="uta-empty-state__text">No hay borradores pendientes</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var draft in _draftResults)
+                                {
+                                    <tr @key="draft.Id">
+                                        <td><span class="uta-code-badge">@draft.InvoiceNumber</span></td>
+                                        <td class="uta-table__bold">@draft.CustomerName</td>
+                                        <td>@(DateTime.TryParse(draft.IssueDate, out var date) ? date.ToString("dd/MM/yyyy HH:mm") : draft.IssueDate)</td>
+                                        <td style="text-align:right">
+                                            <div class="uta-price uta-price--right">
+                                                <span class="uta-price__symbol">$</span>
+                                                <span class="uta-price__value">@draft.Total.ToString("N2")</span>
+                                            </div>
+                                        </td>
+                                        <td style="text-align:center">
+                                            <button class="uta-btn uta-btn--sm uta-btn--primary" @onclick="() => LoadDraft(draft)">
+                                                <i class="bi bi-arrow-down-square"></i> Recuperar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @if (_totalDraftPages > 1)
+            {
+                <div class="uta-pagination-footer rounded-bottom">
+                    <div class="d-flex overflow-hidden">
+                        <button class="uta-pagination-btn @(_currentDraftPage == 1 ? "disabled" : "")"
+                                @onclick="() => LoadDraftsPage(_currentDraftPage - 1)"
+                                disabled="@(_currentDraftPage == 1)">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <span class="uta-pagination-btn uta-pagination-btn--active">@_currentDraftPage</span>
+                        <button class="uta-pagination-btn @(_currentDraftPage >= _totalDraftPages ? "disabled" : "")"
+                                @onclick="() => LoadDraftsPage(_currentDraftPage + 1)"
+                                disabled="@(_currentDraftPage >= _totalDraftPages)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (_showStockErrorModal)
+{
+    <div class="uta-overlay" @onclick="CloseStockErrorModal">
+        <div class="uta-modal uta-modal--md" style="max-width: 600px; width: 100%; margin: 0 auto;" @onclick:stopPropagation="true">
+            <div class="uta-modal__header" style="background-color: #6B1A33;">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-exclamation-circle"></i> &nbsp;Atención: Stock Insuficiente</h3>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseStockErrorModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="uta-modal__body text-center" style="padding: 2rem;">
+                <div style="font-size: 3rem; color: #dc2626; margin-bottom: 1rem;">
+                    <i class="bi bi-box-seam-fill"></i>
+                </div>
+                <h4 style="font-weight: 700; color: #1a1a1a; margin-bottom: 0.5rem;">Productos sin stock</h4>
+                <p style="color: #6c757d; margin-bottom: 1.5rem; font-size: 0.95rem;">
+                    Para continuar, se eliminarán de la factura los siguientes productos:
+                </p>
+                
+                <div style="background: #fdf5f7; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left; border: 1px solid #f3e1e6; max-height: 200px; overflow-y: auto;">
+                    @foreach (var error in _outOfStockProducts)
+                    {
+                        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #e9ecef;">
+                            <span style="font-weight: 600; color: #6B1A33;">@error.ProductName</span>
+                            <span style="font-size: 0.85rem; color: #dc2626;">Disponible: @error.AvailableStock</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="uta-btn uta-btn--outline" style="min-width: 120px;" @onclick="CloseStockErrorModal">Cancelar</button>
+                    <button class="uta-btn uta-btn--primary" style="min-width: 180px;" @onclick="RemoveOutOfStockAndContinue">
+                        <i class="bi bi-trash3"></i> Eliminar y Continuar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    private SalesRegistryModel _salesModel = new SalesRegistryModel();
+
+    private string _searchCustomerTerm = string.Empty;
+    private string _searchCriterion = "card";
+    private int _currentCustomerPage = 1;
+    private int _customerPageSize = 10;
+    private PagedResponse<CustomerResponseDto>? _customerPagedData;
+
+    private List<CustomerModel> _customerResults = new();
+    private CustomerModel? _selectedCustomer;
+    private bool _isSearchingCustomers = false;
+
+    private int _pageSize = 10;
+    private int _currentPage = 1;
+    private int _totalItems;
+    private int _totalPages;
+
+    private CustomerModel? _selectedCustomerEntity;
+    private List<CartItemModel> _cart = new();
+    private string _alertMessage = "";
+    private bool _isError = false;
+    private bool _saleCompleted = false;
+    private int _createdSaleId = 0;
+    private string _invoiceNumber = "DRAFT";
+    private Domain.Enums.SaleStatus _saleStatus = Domain.Enums.SaleStatus.Draft;
+
+    private int _currentCartPage = 1;
+    private int _cartPageSize = 5;
+    private int TotalCartPages => (int)Math.Ceiling((double)_cart.Count / _cartPageSize);
+    private List<CartItemModel> PagedCart => _cart
+        .Skip((_currentCartPage - 1) * _cartPageSize)
+        .Take(_cartPageSize)
+        .ToList();
+
+    private int CartFrom => _cart.Count == 0 ? 0 : ((_currentCartPage - 1) * _cartPageSize) + 1;
+    private int CartTo => Math.Min(_currentCartPage * _cartPageSize, _cart.Count);
+    private bool HasNextCartPage => _currentCartPage < TotalCartPages;
+    private List<int> VisiblePagesCart => PaginationHelper.GenerateVisiblePages(_currentCartPage, TotalCartPages);
+
+    private string _customerSearchCriterionBackingField = "card";
+    private string CustomerSearchCriterion
+    {
+        get => _customerSearchCriterionBackingField;
+        set
+        {
+            if (_customerSearchCriterionBackingField != value)
+            {
+                _customerSearchCriterionBackingField = value;
+                HandleCustomerSearchCriteriaChange();
+            }
+        }
+    }
+    private string _productSearchCriterionBackingField = "name";
+    private string ProductSearchCriterion
+    {
+        get => _productSearchCriterionBackingField;
+        set
+        {
+            if (_productSearchCriterionBackingField != value)
+            {
+                _productSearchCriterionBackingField = value;
+                HandleProductSearchCriteriaChange();
+            }
+        }
+    }
+    private int _itemsPerPage = 5;
+
+    public int TotalCustomerPages { get; set; }
+    private int _currentCustomerPageIdx = 1;
+    private int _customerItemsPerPage = 10;
+    private int _totalCustomerItems = 0;
+
+    private List<CustomerModel> _customerResultList = new();
+    public List<CustomerModel> PagedCustomers { get; set; } = new();
+    private bool _showCustomerModal = false;
+    private string _customerTerm = string.Empty;
+
+    private bool HasPreviousPage => _currentPage > 1;
+    private bool HasNextPage => _currentPage < _totalPages;
+    private int From => _totalItems == 0 ? 0 : ((_currentPage - 1) * _pageSize) + 1;
+    private int To => Math.Min(_currentPage * _pageSize, _totalItems);
+
+    private int CustomerFrom => _totalCustomerItems == 0 ? 0 : ((_currentCustomerPageIdx - 1) * _customerItemsPerPage) + 1;
+    private int CustomerTo => Math.Min(_currentCustomerPageIdx * _customerItemsPerPage, _totalCustomerItems);
+    private bool HasNextCustomerPage => _currentCustomerPageIdx < TotalCustomerPages;
+
+    private List<int> VisiblePagesCustomer => PaginationHelper.GenerateVisiblePages(_currentCustomerPageIdx, TotalCustomerPages);
+    private List<int> GenerateVisiblePages => PaginationHelper.GenerateVisiblePages(_currentPage, _totalPages);
+
+    private string _searchTerm = "";
+    private System.Timers.Timer? _debounceTimer;
+    private List<ProductUI> _productResults = new();
+
+    private decimal VatRateMultiplier => Configuration.GetValue<decimal>("BusinessSettings:VatRate") / 100m;
+    private decimal VatRatePercentage => Configuration.GetValue<decimal>("BusinessSettings:VatRate");
+
+    private decimal GlobalSubtotal => _cart.Sum(i => i.SubTotal);
+    private decimal GlobalVat => GlobalSubtotal * VatRateMultiplier;
+    private decimal FinalTotal => GlobalSubtotal + GlobalVat;
+    private bool CanFinalize => _selectedCustomerEntity != null && _cart.Any() && _cart.All(c => c.Amount > 0);
+
+    private async Task UpdateBrowsingProtection()
+    {
+        if (_salesModel.HasData)
+        {
+            await JS.InvokeVoidAsync("navigationGuard.enable");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("navigationGuard.disable");
+        }    
+    }
+
+    private string GetStatusBadgeClass() => _saleStatus switch
+    {
+        Domain.Enums.SaleStatus.Draft => "uta-badge--yellow",
+        Domain.Enums.SaleStatus.Confirmed => "uta-badge--green",
+        Domain.Enums.SaleStatus.Cancelled => "uta-badge--red",
+        _ => "uta-badge--light"
+    };
+
+    private async Task CancelForm()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Descartar formulario?",
+            text = "Se perderán todos los productos cargados en el carrito.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#6B1A33", 
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, descartar",
+            cancelButtonText = "No, mantener"
+        });
+
+        if (await Confirmed(result))
+        {
+            PerformTotalCleaning();
+            await UpdateBrowsingProtection();
+            await ShowNotification("Formulario descartado");
+        }
+    }
+
+    private async Task<bool> Confirmed(object result)
+    {
+        if (result == null) return false;
+
+        try
+        {
+            var element = (JsonElement)result;
+            return element.TryGetProperty("isConfirmed", out var confirmed) && confirmed.GetBoolean();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void PerformTotalCleaning()
+    {
+        _salesModel = new SalesRegistryModel();
+        _cart?.Clear();
+        _selectedCustomerEntity = null;
+        RecalculateInvoiceTotals();
+    }
+
+    private int _focusedCustomerRowIndex = 0;
+
+    private async Task HandleCustomerSearchKey(KeyboardEventArgs e)
+    {
+        if (PagedCustomers == null || !PagedCustomers.Any()) return;
+
+        if (e.Key == "ArrowDown")
+        {
+            if (_focusedCustomerRowIndex < PagedCustomers.Count() - 1)
+                _focusedCustomerRowIndex++;
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            if (_focusedCustomerRowIndex > 0)
+                _focusedCustomerRowIndex--;
+        }
+        else if (e.Key == "Enter")
+        {
+            if (_focusedCustomerRowIndex >= 0 && _focusedCustomerRowIndex < PagedCustomers.Count())
+            {
+                await SelectCustomer(PagedCustomers.ElementAt(_focusedCustomerRowIndex));
+            }
+        }
+    }
+
+    private async Task InputCustomerSearch(ChangeEventArgs e)
+    {
+        _customerTerm = e.Value?.ToString() ?? string.Empty;
+        _currentCustomerPageIdx = 1;
+        _focusedCustomerRowIndex = 0;
+        await LoadClientsAsync();
+    }
+
+    private async Task LoadClientsAsync()
+    {
+        _isSearchingCustomers = true;
+
+        var response = await CustomerApiService.SearchCustomersAsync(
+            _customerTerm, 
+            CustomerSearchCriterion, 
+            _currentCustomerPageIdx, 
+            _customerItemsPerPage
+        );
+
+        if (response != null)
+        {
+            _totalCustomerItems = response.TotalCount;
+            TotalCustomerPages = response.TotalPages;
+
+            PagedCustomers = response.Items.Select(dto => new CustomerModel 
+            { 
+                Id = dto.Id,
+                IDCard = dto.IDCard,
+                Name = dto.Name,
+                LastName = dto.LastName,
+                Phone = dto.Phone,
+                Address = dto.Address,
+                Email = dto.Email
+            }).ToList();
+        }
+
+        _isSearchingCustomers = false;
+        StateHasChanged();
+    }
+
+    private async Task AddSimpleProduct(ProductUI selectedProduct)
+    {
+        await AddProduct(selectedProduct);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shortcuts.OnShortcutPressed += HandleShortcuts;
+
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (s, e) => await InvokeAsync(SearchProductsInApi);
+        _debounceTimer.AutoReset = false;
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try 
+        {
+            var response = await ApiService.GetPagedProductsAsync(
+                _currentPage, 
+                _pageSize, 
+                _searchTerm, 
+                ProductSearchCriterion);
+
+            if (response is not null)
+            {
+                _totalItems = response.TotalCount;
+                _totalPages = response.TotalPages;
+
+                _productResults = response.Items.Select(item => new ProductUI 
+                { 
+                    Id = item.Id, 
+                    Name = item.Name, 
+                    UnitPrice = item.UnitPrice, 
+                    Stock = item.Stock 
+                }).ToList();
+            }
+            else 
+            {
+                _productResults.Clear();
+                _totalItems = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading products: {ex.Message}");
+            await ShowNotification("Communication error with the server.", true);
+        }
+        finally 
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            _pageSize = newSize;
+            _currentPage = 1; 
+            await LoadData();
+        }
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= _totalPages)
+        {
+            _currentPage = newPage;
+            await LoadData();
+        }
+    }
+
+    private int _focusedProductRowIndex = 0;
+
+    private async Task HandleProductSearchKey(KeyboardEventArgs e)
+    {
+        if (_productResults == null || !_productResults.Any()) return;
+
+        if (e.Key == "ArrowDown")
+        {
+            if (_focusedProductRowIndex < _productResults.Count() - 1)
+                _focusedProductRowIndex++;
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            if (_focusedProductRowIndex > 0)
+                _focusedProductRowIndex--;
+        }
+        else if (e.Key == "Enter")
+        {
+            if (_focusedProductRowIndex >= 0 && _focusedProductRowIndex < _productResults.Count())
+            {
+                var selected = _productResults.ElementAt(_focusedProductRowIndex);
+                if (selected.Stock > 0)
+                {
+                    await AddSimpleProduct(selected);
+                }
+            }
+        }
+    }
+
+    private void OnInputSearch(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+        _currentPage = 1;
+        _focusedProductRowIndex = 0;
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task SearchProductsInApi()
+    {
+        await LoadData();
+    }
+
+    private async Task GoToCustomerPage(int page)
+    {
+        _currentCustomerPageIdx = page;
+
+        await LoadClientsAsync();
+    }
+
+    private async Task OnCustomerPageSizeChanged(ChangeEventArgs e)
+    {
+
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            _customerItemsPerPage = newSize;
+            _currentCustomerPageIdx = 1; 
+            await LoadClientsAsync();
+        }
+
+    }
+
+    private void HandleCustomerSearchCriteriaChange()
+    {
+        _customerTerm = "";
+        _currentCustomerPageIdx = 1;
+        _ = LoadClientsAsync();
+    }
+
+    private void HandleProductSearchCriteriaChange()
+    {
+        _searchTerm = "";
+        _currentPage = 1;
+        _ = LoadData();
+    }
+
+    private string GetOnKeyPressHandler(string criterion)
+    {
+        if (criterion == "id" || criterion == "card")
+        {
+            return "return event.charCode >= 48 && event.charCode <= 57"; 
+        }
+        else if (criterion == "name")
+        {
+            return "return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241 || event.charCode == 193 || event.charCode == 201 || event.charCode == 205 || event.charCode == 211 || event.charCode == 218 || event.charCode == 225 || event.charCode == 233 || event.charCode == 237 || event.charCode == 243 || event.charCode == 250";
+        }
+        return "";
+    }
+
+    private async Task ShowNotification(string message, bool isError = false)
+    {
+        _alertMessage = message; _isError = isError;
+        StateHasChanged(); await Task.Delay(3000);
+        _alertMessage = ""; StateHasChanged();
+    }
+
+    private async Task UpdateQuantity(CartItemModel item, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out int newQuantity))
+        {
+            item.Amount = 1;
+            await ShowNotification("Entrada no válida.", true);
+        }
+        else
+        {
+            if (newQuantity > item.AvailableStock)
+            {
+                item.Amount = 1;
+                await ShowNotification($"Cantidad insuficiente. Solo hay {item.AvailableStock} disponibles.", true);
+            }
+            else
+            {
+                item.Amount = newQuantity < 1 ? 1 : newQuantity;
+            }
+        }
+
+        RecalculateInvoiceTotals();
+        StateHasChanged();
+    }
+
+    private void RecalculateInvoiceTotals()
+    {
+        _salesModel.Subtotal = _cart.Sum(x => x.SubTotal);
+        _salesModel.Vat = _salesModel.Subtotal * VatRateMultiplier;
+        _salesModel.Total = _salesModel.Subtotal + _salesModel.Vat;
+    
+        StateHasChanged(); 
+    }
+
+    public class ProductUI : ProductModel
+    {
+        public int TempQuantity { get; set; } = 1;
+    }
+
+    private async Task OpenCustomerModal() 
+    {
+        _customerTerm = "";
+        _currentCustomerPageIdx = 1;
+        _showCustomerModal = true;
+        await LoadClientsAsync();
+
+    }
+
+    private void CloseCustomerModal() {
+        _showCustomerModal = false;
+        _isCreatingCustomer = false;
+    }
+
+    private bool _isCreatingCustomer = false;
+    private bool _isSavingCustomer = false;
+    private CreateCustomerRequest _newCustomer = new();
+    private Dictionary<string, string> _newCustomerErrors = new();
+
+    private bool HasNewCustomerError(string field) => _newCustomerErrors.ContainsKey(field);
+    private string GetNewCustomerError(string field) => _newCustomerErrors.TryGetValue(field, out var error) ? error : "";
+
+    private void ValidateNewCustomerField(string field, string val, string label)
+    {
+        _newCustomerErrors.Remove(field);
+        
+        if (string.IsNullOrWhiteSpace(val))
+        {
+            _newCustomerErrors[field] = $"{label} es requerido.";
+            return;
+        }
+
+        if (field == "IDCard")
+        {
+            if (val.Length != 10)
+            {
+                _newCustomerErrors[field] = "La cédula debe tener exactamente 10 dígitos.";
+            }
+            return;
+        }
+
+        if (field == "Phone")
+        {
+            if (val.Length != 10)
+            {
+                _newCustomerErrors[field] = "El teléfono debe tener exactamente 10 dígitos.";
+            }
+            else if (!val.StartsWith("09"))
+            {
+                _newCustomerErrors[field] = "El teléfono debe empezar con '09'.";
+            }
+            return;
+        }
+
+        if (field == "Email" && !IsValidEmail(val))
+        {
+            _newCustomerErrors[field] = "Formato de correo no válido.";
+            return;
+        }
+
+        if ((field == "Name" || field == "LastName") && !System.Text.RegularExpressions.Regex.IsMatch(val, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$"))
+        {
+            _newCustomerErrors[field] = $"{label} solo debe contener letras.";
+            return;
+        }
+
+        if ((field == "Name" || field == "LastName") && val.Length < 2)
+        {
+            _newCustomerErrors[field] = $"{label} debe tener al menos 2 letras.";
+            return;
+        }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address.Equals(email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private void OnNewCustomerNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper(); 
+        _newCustomer.Name = val;
+        ValidateNewCustomerField("Name", val, "Nombre");
+    }
+
+    private void OnNewCustomerIDCardInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        _newCustomer.IDCard = val;
+        ValidateNewCustomerField("IDCard", val, "Cédula");
+    }
+
+    private void OnNewCustomerPhoneInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        _newCustomer.Phone = val;
+        ValidateNewCustomerField("Phone", val, "Teléfono");
+    }
+
+    private void OnNewCustomerLastNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        _newCustomer.LastName = val;
+        ValidateNewCustomerField("LastName", val, "Apellido");
+    }
+
+    private void OnNewCustomerAddressInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = System.Text.RegularExpressions.Regex.Replace(val, @"^\s+", "");
+        val = System.Text.RegularExpressions.Regex.Replace(val, @"\s{2,}", " ");
+        _newCustomer.Address = val.ToUpper();
+    }
+
+    private void OnNewCustomerEmailInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString()?.Trim() ?? "";
+        _newCustomer.Email = val;
+        ValidateNewCustomerField("Email", val, "Correo");
+    }
+
+    private async Task SaveNewCustomerAsync()
+    {
+        ValidateNewCustomerField("IDCard", _newCustomer.IDCard, "Cédula");
+        ValidateNewCustomerField("Phone", _newCustomer.Phone, "Teléfono");
+        ValidateNewCustomerField("Name", _newCustomer.Name, "Nombre");
+        ValidateNewCustomerField("LastName", _newCustomer.LastName, "Apellido");
+        ValidateNewCustomerField("Email", _newCustomer.Email, "Correo");
+        
+        if (_newCustomerErrors.Any())
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Formulario Inválido", "Por favor corrija los errores en el formulario.", "warning");
+            return;
+        }
+
+        _isSavingCustomer = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await CustomerApiService.CreateCustomerAsync(_newCustomer);
+            if (response.IsSuccessStatusCode)
+            {
+                await ShowNotification("Cliente creado y seleccionado correctamente.");
+                
+                // Set values to select it
+                _customerTerm = _newCustomer.IDCard;
+                CustomerSearchCriterion = "card";
+                _isCreatingCustomer = false;
+                
+                // Load clients and automatically select it if found
+                await LoadClientsAsync();
+                
+                var createdCustomer = PagedCustomers.FirstOrDefault(c => c.IDCard == _newCustomer.IDCard);
+                if (createdCustomer != null)
+                {
+                    await SelectCustomer(createdCustomer);
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error al crear", "No se pudo registrar el cliente. Posiblemente ya exista. " + error, "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowNotification("Error de comunicación.", true);
+        }
+        finally
+        {
+            _isSavingCustomer = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectCustomer(CustomerModel customer)
+    {
+        _selectedCustomerEntity = customer;
+        _customerTerm = string.Empty;
+        _showCustomerModal = false;
+
+        await ShowNotification($"Cliente '{customer.Name} {customer.LastName}' seleccionado");
+        StateHasChanged();
+    }
+
+    private bool _showProductModal = false;
+
+    private async Task  OpenProductModal()
+    {
+
+        _showProductModal = true; 
+        _searchTerm = ""; 
+        _currentPage = 1;
+        await LoadData();
+
+    }
+
+    private void CloseProductModal() => _showProductModal = false;
+
+private async Task AddProduct(ProductUI prod)
+{
+    var existingItem = _cart.FirstOrDefault(c => c.ProductId == prod.Id);
+
+    if (existingItem != null)
+    {
+        await ShowNotification($"El producto '{prod.Name}' ya está seleccionado.", true);
+    }
+    else
+    {
+        _cart.Add(new CartItemModel 
+        { 
+            ProductId = prod.Id,
+            ProductName = prod.Name,
+            UnitPrice = prod.UnitPrice,
+            Amount = prod.TempQuantity,
+            AvailableStock = prod.Stock,
+            Product = new ProductModel { Id = prod.Id, Name = prod.Name, UnitPrice = prod.UnitPrice, Stock = prod.Stock }
+        });
+        _currentCartPage = TotalCartPages;
+        await ShowNotification($"{prod.Name} añadido al carrito.");
+    }
+
+    RecalculateInvoiceTotals(); 
+    prod.TempQuantity = 1;
+    StateHasChanged();
+}
+
+    private async Task RemoveFromCart(CartItemModel item)
+    {
+        _cart.Remove(item);
+        if (_currentCartPage > TotalCartPages && TotalCartPages > 0) _currentCartPage = TotalCartPages;
+        else if (TotalCartPages == 0) _currentCartPage = 1;
+
+        await ShowNotification("Producto quitado");
+        RecalculateInvoiceTotals();
+    }
+
+    private void GoToCartPage(int page) => _currentCartPage = page;
+
+    private void OnCartPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            _cartPageSize = newSize;
+            _currentCartPage = 1;
+        }
+    }
+
+    private bool _isProcessingSale = false;
+    private int _loadedDraftId = 0;
+    private bool _showDraftsModal = false;
+    private bool _isLoadingDrafts = false;
+    private List<Blazor.Models.SaleResponseDto> _draftResults = new();
+    private int _currentDraftPage = 1;
+    private int _totalDraftPages = 1;
+
+    private async Task OpenDraftsModal()
+    {
+        _showDraftsModal = true;
+        _currentDraftPage = 1;
+        await LoadDraftsPage(1);
+    }
+
+    private void CloseDraftsModal() => _showDraftsModal = false;
+
+    private async Task LoadDraftsPage(int page)
+    {
+        _isLoadingDrafts = true;
+        _currentDraftPage = page;
+        StateHasChanged();
+
+        var response = await ApiService.GetPagedSalesAsync(page, 5, "Draft", "status");
+        if (response != null)
+        {
+            _draftResults = response.Items.Where(x => x.Status == Domain.Enums.SaleStatus.Draft).ToList();
+            _totalDraftPages = response.TotalPages;
+        }
+
+        _isLoadingDrafts = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadDraft(Blazor.Models.SaleResponseDto draft)
+    {
+        _cart.Clear();
+        _loadedDraftId = draft.Id;
+        _invoiceNumber = draft.InvoiceNumber;
+
+        // Recuperar info del cliente (puede necesitar hacer una llamada al API si faltan campos)
+        _selectedCustomerEntity = new CustomerModel
+        {
+            Name = draft.CustomerName,
+            LastName = "", // Viene combinado en CustomerName
+            IDCard = draft.CustomerIDCard,
+            Phone = draft.CustomerPhone,
+            Address = draft.CustomerAddress,
+            Email = draft.CustomerEmail
+        };
+
+        foreach (var detail in draft.Details)
+        {
+            var product = await ApiService.GetProductByIdAsync(detail.ProductId);
+            _cart.Add(new CartItemModel
+            {
+                ProductId = detail.ProductId,
+                ProductName = detail.ProductName,
+                UnitPrice = detail.UnitPrice,
+                Amount = detail.Amount,
+                AvailableStock = product?.Stock ?? detail.Amount,
+                Product = new ProductModel { Id = detail.ProductId, Name = detail.ProductName, UnitPrice = detail.UnitPrice, Stock = product?.Stock ?? detail.Amount }
+            });
+        }
+
+        _saleCompleted = false;
+        _saleStatus = Domain.Enums.SaleStatus.Draft;
+        RecalculateInvoiceTotals();
+        CloseDraftsModal();
+        await ShowNotification($"Borrador {_invoiceNumber} recuperado para edición");
+    }
+
+    private async Task ProcessSaleAction(bool confirmImmediately)
+    {
+        if (_isProcessingSale) return;
+
+        _isProcessingSale = true;
+        StateHasChanged();
+
+        var saleRequest = new Application.Features.Sales.CreateSaleRequest
+        {
+            DraftId = _loadedDraftId > 0 ? _loadedDraftId : null,
+            CustomerId = _selectedCustomerEntity!.Id > 0 ? _selectedCustomerEntity.Id : 1, // ID válido necesario
+            Details = _cart.Select(item => new CreateRequestDetail
+            {
+                ProductId = item.Product.Id,
+                Amount = item.Amount
+            }).ToList()
+        };
+
+        try 
+        {
+            var httpResponse = await ApiService.CreateSaleAsync(saleRequest);
+
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                var jsonContent = await httpResponse.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<Blazor.Models.SaleResponseDto>(jsonContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result != null)
+                {
+                    _invoiceNumber = result.InvoiceNumber;
+                    _createdSaleId = result.Id;
+                    _saleStatus = result.Status;
+                }
+
+                _saleCompleted = true;
+
+                if (confirmImmediately)
+                {
+                    bool confirmed = await ConfirmDraft();
+                    if (!confirmed)
+                    {
+                        // Si falla por stock, reabrimos el modo edición cargando el draft
+                        _loadedDraftId = _createdSaleId;
+                        _saleCompleted = false; 
+                    }
+                }
+                else
+                {
+                    await ShowNotification("Borrador guardado. Puede confirmarlo en cualquier momento.");
+                }
+            }
+            else
+            {
+                var error = await httpResponse.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se pudo procesar: " + error, "error");
+                _saleCompleted = false;
+            }
+        }
+        catch (Exception)
+        {
+            await ShowNotification("Error de comunicación.", true);
+            _saleCompleted = false;
+        }
+        finally
+        {
+            _isProcessingSale = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAsDraft()
+    {
+        await ProcessSaleAction(false);
+    }
+
+    private async Task SellAndConfirm()
+    {
+        await ProcessSaleAction(true);
+    }
+
+    private async Task PromptImmediateConfirmation()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "Venta Registrada",
+            text = "¿Desea confirmar y cobrar esta venta ahora mismo? Esto descontará el stock.",
+            icon = "question",
+            showCancelButton = true,
+            confirmButtonColor = "#16a34a",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, Confirmar",
+            cancelButtonText = "Mantener como Borrador"
+        });
+
+        if (await Confirmed(result))
+        {
+            await ConfirmDraft();
+        }
+    }
+
+    private async Task<bool> ConfirmDraft()
+    {
+        _isProcessingSale = true;
+        StateHasChanged();
+        bool success = false;
+
+        var response = await ApiService.ConfirmSaleAsync(_createdSaleId);
+        if (response.IsSuccessStatusCode)
+        {
+            _saleStatus = Domain.Enums.SaleStatus.Confirmed;
+            await ShowNotification("¡Venta confirmada y stock actualizado!");
+            success = true;
+        }
+        else
+        {
+            var errorJson = await response.Content.ReadAsStringAsync();
+            try {
+                using var doc = JsonDocument.Parse(errorJson);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("type", out var typeProp) && typeProp.GetString() == "BulkStock")
+                {
+                    var errorsProp = root.GetProperty("errors");
+                    _outOfStockProducts = JsonSerializer.Deserialize<List<StockValidationErrorModel>>(errorsProp.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    _showStockErrorModal = true;
+                }
+                else 
+                {
+                    await JS.InvokeVoidAsync("Swal.fire", "Error de Stock", "No se pudo confirmar: " + errorJson, "warning");
+                }
+            } catch {
+                await JS.InvokeVoidAsync("Swal.fire", "Error de Stock", "No se pudo confirmar: " + errorJson, "warning");
+            }
+        }
+
+        _isProcessingSale = false;
+        StateHasChanged();
+        return success;
+    }
+
+    private bool _showStockErrorModal = false;
+    private List<StockValidationErrorModel> _outOfStockProducts = new();
+
+    private void CloseStockErrorModal()
+    {
+        _showStockErrorModal = false;
+    }
+
+    private async Task RemoveOutOfStockAndContinue()
+    {
+        _showStockErrorModal = false;
+        
+        foreach (var error in _outOfStockProducts)
+        {
+            var item = _cart.FirstOrDefault(c => c.ProductId == error.ProductId);
+            if (item != null)
+            {
+                _cart.Remove(item);
+            }
+        }
+        
+        RecalculateInvoiceTotals();
+        
+        if (_cart.Any())
+        {
+            await ShowNotification("Productos sin stock eliminados. Puede agregar nuevos productos o intentar confirmar.");
+        }
+        else
+        {
+            await ShowNotification("La factura quedó vacía tras eliminar los productos sin stock.", true);
+        }
+    }
+
+    private void ViewInvoice()
+    {
+        NavManager.NavigateTo($"/facturas?numeroFactura={_invoiceNumber}");
+    }
+    
+    private async Task NewSale()
+    {
+        _cart.Clear(); 
+        _selectedCustomerEntity = null; 
+        _saleCompleted = false; 
+        _invoiceNumber = "DRAFT";
+        _loadedDraftId = 0;
+        _saleStatus = Domain.Enums.SaleStatus.Draft;
+        RecalculateInvoiceTotals();
+        await LoadData(); // Refrescar stock por si hubo confirmaciones
+        await ShowNotification("Formulario de venta restablecido");
+    }
+
+    private void HandleShortcuts(string key)
+    {
+        InvokeAsync(async () => {
+            if (key == "Escape") 
+            {
+                CloseCustomerModal();
+                CloseProductModal();
+                _showDraftsModal = false;
+            }
+            else if (!_showCustomerModal && !_showProductModal && !_showDraftsModal)
+            {
+                if (key == "F2") await OpenCustomerModal();
+                if (key == "F4") await OpenProductModal();
+                if (key == "F8" && CanFinalize && !_isProcessingSale && !_saleCompleted) await SellAndConfirm();
+                if (key == "F9" && CanFinalize && !_isProcessingSale && !_saleCompleted) await SaveAsDraft();
+                if (key == "F10" && !_isProcessingSale && !_saleCompleted) await CancelForm();
+            }
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Shortcuts.OnShortcutPressed -= HandleShortcuts;
+        _debounceTimer?.Dispose();
+    }
+}

@@ -1,0 +1,1110 @@
+/* ====================================================
+   SISTEMA DE DISEÑO GLOBAL - UTA POS
+   ==================================================== */
+
+:root {
+    /* Identidad UTA (Universidad Tecnológica de Los Andes) */
+    --wine: #6B1A33;
+    --wine-light: #8b2041;
+    --wine-pale: #f3e1e6;
+    
+    /* Compatibilidad con estilos antiguos */
+    --uta-granate: var(--wine);
+    --uta-granate-light: var(--wine-light);
+    --uta-orange: #f97316;
+    --uta-bg-warning: #fff7ed;
+
+    /* Neutros */
+    --text-dark: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --bg-light: #f9fafb;
+
+    /* Sombras Premium */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    /* Semánticos */
+    --success: #16a34a;
+    --success-light: #15803d;
+    --success-pale: #ecfdf5;
+
+    --danger: #ef4444;
+    --danger-light: #dc2626;
+    --danger-pale: #fef2f2;
+
+    --warning: #f59e0b;
+    --warning-pale: #fff7ed;
+}
+
+.text-primary {
+    color: var(--wine) !important;
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+.text-success {
+    color: var(--success) !important;
+}
+
+/* --- ESTILOS GENERALES Y LAYOUT --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+}
+
+.uta-page {
+    padding: 1.8rem 2rem;
+    min-height: calc(100vh - 72px);
+    background-color: #f4f6f9;
+}
+
+.uta-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.uta-page-header__right {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.uta-breadcrumb {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+}
+
+.uta-breadcrumb__sep {
+    margin: 0 0.35rem;
+}
+
+.uta-breadcrumb__active {
+    color: var(--wine);
+}
+
+.uta-page-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 0.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    letter-spacing: -0.5px;
+}
+
+.uta-page-title__icon {
+    font-size: 1.4rem;
+}
+
+.uta-page-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* --- TABS --- */
+.uta-tabs {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+
+.uta-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.uta-tab-btn:hover {
+    color: var(--wine);
+    background-color: var(--wine-pale);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+.uta-tab-btn--active {
+    color: var(--wine);
+    border-bottom-color: var(--wine);
+}
+
+/* --- CARDS --- */
+.uta-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.uta-card__header {
+    background: var(--wine);
+    color: #ffffff;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.uta-card__header--solid {
+    background-color: var(--wine);
+    color: white;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    text-align: center;
+}
+
+.uta-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.uta-card__header-icon {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.uta-card__body {
+    padding: 1.5rem;
+}
+
+.uta-card__body.p-0 {
+    padding: 0;
+}
+
+/* --- TABLAS --- */
+.uta-table-wrap {
+    overflow-x: auto;
+}
+
+.uta-table-wrap--bordered {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.uta-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.uta-table thead tr {
+    background: #f8f9fa;
+    border-bottom: 2px solid var(--border);
+}
+
+.uta-table th {
+    padding: 0.85rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #495057;
+    text-align: left;
+}
+
+.uta-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: #495057;
+    vertical-align: middle;
+    transition: background-color 0.2s ease;
+}
+
+.uta-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.uta-table tbody tr:hover td {
+    background: var(--wine-pale);
+}
+
+.uta-table__bold {
+    font-weight: 600;
+    color: #212529 !important;
+}
+
+.uta-table__empty {
+    text-align: center;
+    padding: 3rem !important;
+}
+
+/* --- BADGES Y TAGS --- */
+.uta-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.uta-badge--green {
+    background: var(--success-pale);
+    color: var(--success);
+}
+
+.uta-badge--red {
+    background: var(--danger-pale);
+    color: var(--danger);
+}
+
+.uta-badge--blue {
+    background: #e0f2fe;
+    color: #1d4ed8;
+}
+
+.uta-badge--yellow {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.uta-badge--wine { 
+    background-color: var(--wine-pale); 
+    color: var(--wine); 
+}
+
+.uta-badge--white-outline {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.uta-code-badge {
+    background: #f3f4f6;
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #374151;
+    font-weight: 600;
+}
+
+/* --- BOTONES --- */
+.uta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.uta-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+.uta-btn:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+.uta-btn--block {
+    width: 100%;
+}
+
+.uta-btn--sm {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+}
+
+.uta-btn--lg {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.9rem;
+}
+
+.uta-btn--primary {
+    background: var(--wine);
+    color: #ffffff !important;
+    box-shadow: var(--shadow-sm);
+}
+
+.uta-btn--primary:not(:disabled):hover {
+    background: var(--wine-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.uta-btn--success {
+    background: var(--success);
+    color: #ffffff !important;
+    box-shadow: var(--shadow-sm);
+}
+
+.uta-btn--success:not(:disabled):hover {
+    background: var(--success-light);
+}
+
+.uta-btn--outline {
+    background: transparent;
+    color: var(--wine);
+    border: 1px solid var(--wine);
+}
+
+.uta-btn--outline:hover {
+    background: var(--wine-pale);
+    color: var(--wine);
+}
+
+.uta-btn--white {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.uta-btn--white:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Botones de Icono Outlined */
+.uta-icon-btn-outline {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1.5px solid #e9ecef;
+    color: #64748b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.uta-icon-btn-outline:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.uta-icon-btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.uta-icon-btn-outline--maroon {
+    color: var(--wine);
+    border-color: rgba(107, 26, 51, 0.2);
+}
+
+.uta-icon-btn-outline--maroon:hover:not(:disabled) {
+    background-color: var(--wine);
+    color: #ffffff;
+    border-color: var(--wine);
+}
+
+.uta-icon-btn-outline--red {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.uta-icon-btn-outline--red:hover:not(:disabled) {
+    background-color: var(--danger);
+    color: #ffffff;
+    border-color: var(--danger);
+}
+
+.uta-icon-btn-outline--green {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.uta-icon-btn-outline--green:hover:not(:disabled) {
+    background-color: var(--success);
+    color: #ffffff;
+    border-color: var(--success);
+}
+
+.uta-icon-btn-outline i {
+    line-height: 1;
+}
+
+.uta-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.uta-icon-btn--red {
+    background: var(--danger-pale);
+    color: var(--danger);
+}
+
+.uta-icon-btn--red:hover {
+    background: var(--danger);
+    color: #fff;
+    transform: scale(1.05);
+}
+
+/* --- MODALES --- */
+.uta-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    animation: uta-fadeIn 0.2s ease-out;
+}
+
+@keyframes uta-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.uta-modal {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: var(--shadow-lg);
+    animation: uta-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
+
+.uta-modal--lg {
+    max-width: 600px;
+}
+
+.uta-modal--xl {
+    max-width: 900px;
+}
+
+@keyframes uta-slideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.uta-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.5rem 1.5rem 1.2rem;
+    background-color: var(--wine);
+    border-bottom: none;
+}
+
+.uta-modal__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 0.25rem 0;
+    display: flex;
+    align-items: center;
+}
+
+.uta-modal__subtitle {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.uta-modal__close {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #ffffff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0.3rem 0.5rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.uta-modal__close:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.uta-modal__body {
+    padding: 1.5rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+
+.uta-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background-color: #ffffff;
+    border-top: 1px solid var(--border);
+}
+
+/* --- FORMULARIOS --- */
+.uta-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.uta-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.uta-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.uta-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.uta-input-icon {
+    position: absolute;
+    left: 1rem;
+    color: #9ca3af;
+    font-size: 1.1rem;
+    transition: color 0.2s ease;
+}
+
+.uta-form-control, .form-select {
+    width: 100%;
+    padding: 0.6rem 0.8rem 0.6rem 2.5rem;
+    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    color: #111827;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.uta-form-control:focus, .form-select:focus {
+    border-color: var(--wine);
+    box-shadow: 0 0 0 3px rgba(107, 26, 51, 0.1);
+}
+
+.uta-form-control:focus + .uta-input-icon,
+.uta-input-wrapper:focus-within .uta-input-icon {
+    color: var(--wine);
+}
+
+.uta-password-requirements {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem 0.5rem;
+    margin-top: 0.4rem;
+    padding: 0 0.2rem;
+}
+
+.uta-req {
+    font-size: 0.7rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.2s ease;
+}
+
+.uta-req i {
+    font-size: 0.75rem;
+}
+
+.uta-req.invalid {
+    color: #9ca3af;
+}
+
+.uta-req.invalid i {
+    color: #f87171;
+}
+
+.uta-req.valid {
+    color: #059669;
+}
+
+.uta-req.valid i {
+    color: #10b981;
+}
+
+/* --- TOASTS --- */
+.uta-toast-wrapper {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.uta-toast {
+    pointer-events: auto;
+    min-width: 320px;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    position: relative;
+    overflow: hidden;
+    animation: uta-toastEnter 0.5s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+@keyframes uta-toastEnter {
+    from {
+        transform: translateX(100%) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.uta-toast__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    background: #f8f9fa;
+}
+
+.uta-toast--success .uta-toast__icon {
+    background: var(--success-pale);
+    color: var(--success);
+}
+
+.uta-toast--error .uta-toast__icon {
+    background: var(--danger-pale);
+    color: var(--danger);
+}
+
+.uta-toast__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding-top: 2px;
+}
+
+.uta-toast__title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.2px;
+}
+
+.uta-toast__message {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.uta-toast__close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1.2rem;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+    margin-top: -4px;
+    margin-right: -4px;
+}
+
+.uta-toast__close:hover {
+    color: #1a1a1a;
+    transform: rotate(90deg);
+}
+
+.uta-toast__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.uta-toast__progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    transform-origin: left;
+    animation: uta-toastProgress 3s linear forwards;
+}
+
+.uta-toast--success .uta-toast__progress::after {
+    background: linear-gradient(90deg, var(--success), #34d399);
+}
+
+.uta-toast--error .uta-toast__progress::after {
+    background: linear-gradient(90deg, var(--danger), #f87171);
+}
+
+@keyframes uta-toastProgress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
+/* --- BUSCADOR --- */
+.uta-search-bar {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.uta-search-bar__select {
+    border: none;
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    padding: 0.6rem 1rem;
+    outline: none;
+    border-right: 1px solid #ced4da;
+    cursor: pointer;
+}
+
+.uta-search-bar__input {
+    flex: 1;
+    border: none;
+    padding: 0.6rem 1rem;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.uta-search-bar__btn {
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0.6rem 1.5rem !important;
+    height: 100%;
+}
+
+@media (max-width: 768px) {
+    .uta-search-bar {
+        flex-direction: column;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        gap: 0.5rem;
+    }
+
+    .uta-search-bar__select,
+    .uta-search-bar__input,
+    .uta-search-bar__btn {
+        width: 100%;
+        border: 1px solid #ced4da;
+        border-radius: 8px !important;
+    }
+}
+
+/* --- PAGINACIÓN --- */
+.uta-pagination-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid var(--border);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+}
+
+.uta-text-highlight {
+    color: var(--wine) !important;
+    font-weight: 700;
+}
+
+.uta-select-wrapper {
+    position: relative;
+    width: 80px;
+}
+
+.uta-pagination-footer .form-select {
+    color: #212529 !important;
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+}
+
+.uta-pagination-footer .form-select option {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+.uta-pagination-btn {
+    min-width: 40px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    color: var(--wine);
+    border: 1px solid var(--border);
+    border-right: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.uta-pagination-btn:last-child {
+    border-right: 1px solid var(--border);
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.uta-pagination-btn:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.uta-pagination-btn:hover:not(.disabled):not(.uta-pagination-btn--active) {
+    background-color: #f1f3f5;
+    color: var(--wine-light);
+}
+
+.uta-pagination-btn--active {
+    background-color: var(--wine) !important;
+    color: #ffffff !important;
+    border-color: var(--wine) !important;
+    z-index: 2;
+}
+
+.uta-pagination-btn.disabled {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.uta-pagination-btn--ellipsis {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: default;
+}
+
+/* --- ESTADOS VACÍOS --- */
+.uta-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.uta-empty-state__icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: #d1d5db;
+    display: flex;
+    align-items: center;
+}
+
+.uta-empty-state__text {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.uta-empty-state__sub {
+    font-size: 0.8rem;
+    color: #adb5bd;
+}
+
+/* --- ESTILOS REFINADOS PARA SWAL --- */
+.uta-swal-card {
+    border-radius: 1.5rem !important;
+    padding: 1.5rem !important;
+}
+
+.uta-swal-title {
+    font-family: 'Inter', sans-serif !important;
+    color: #111827 !important;
+    font-size: 1.75rem !important;
+    margin-top: 1rem !important;
+}
+
+.uta-swal-html {
+    padding: 0 1rem !important;
+}
+
+.uta-alert-list {
+    margin: 1.5rem 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid #fed7aa;
+}
+
+.uta-alert-item {
+    background-color: var(--uta-bg-warning);
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border-bottom: 1px solid #fed7aa;
+}
+
+.uta-alert-item:last-child {
+    border-bottom: none;
+}
+
+.uta-alert-icon {
+    color: var(--uta-orange);
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.uta-product-name {
+    color: #9a3412;
+    font-weight: 700;
+}
+
+/* Ocultar el UI de errores de Blazor a menos que ocurra una excepción */
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* --- ACCESIBILIDAD Y HOTKEYS (WORD STYLE) --- */
+.uta-key-container {
+    position: relative;
+}
+
+.uta-keytip {
+    position: absolute;
+    top: -8px;
+    left: 4px;
+    background: #262626;
+    color: white;
+    font-family: 'Segoe UI', 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    z-index: 10000;
+    text-transform: uppercase;
+    pointer-events: none;
+    display: none;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+body.uta-show-keys .uta-keytip {
+    display: inline-block !important;
+}
+
+body.uta-show-keys.uta-modal-open .uta-keytip {
+    display: none !important;
+}
+
+body.uta-show-keys.uta-modal-open .uta-modal .uta-keytip {
+    display: inline-block !important;
+}
+
+/* Ajustes para que no se corten en menús */
+.nav-link.uta-nav-link {
+    position: relative;
+}
+
+/* Sincronización de hover con navegación por teclado */
+.uta-table--sync-hover tbody tr:hover td {
+    background-color: transparent !important;
+}
+
+/* Fila resaltada para navegación con teclado en tablas */
+.uta-table-row--focused td {
+    background-color: var(--wine-pale) !important;
+    transition: background-color 0.1s ease;
+}

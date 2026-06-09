@@ -1,0 +1,771 @@
+@page "/clientes"
+@using Application.Features.Customers
+@using Application.Common
+@using Domain.Common
+@using Blazor.Helpers
+@using Blazor.Models
+@using Blazor.Services
+@inject CustomerApiService CustomerApiService
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "Administrador")]
+
+<UtaToast @ref="_toast" />
+
+<div class="uta-page">
+    <div class="uta-page-header">
+        <div class="uta-page-header__left">
+            <h1 class="uta-page-title">
+                <i class="bi bi-people-fill text-primary uta-page-title__icon"></i>
+                Gestión de Clientes
+            </h1>
+            <p class="uta-page-subtitle">Administre el directorio de clientes registrados en el sistema</p>
+        </div>
+        <div class="uta-page-header__right">
+            <button class="uta-btn uta-btn--primary" @onclick="OpenCreateModal">
+                <i class="bi bi-person-plus"></i> &nbsp;Nuevo Cliente
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtro de Estado para Administradores -->
+    <AuthorizeView Roles="Administrador">
+        <Authorized>
+            <div class="uta-tabs mb-4">
+                <button class="uta-tab-btn @(_statusFilter == "all" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeStatusFilter("all")'>
+                    <i class="bi bi-people me-2"></i> Todos
+                </button>
+                <button class="uta-tab-btn @(_statusFilter == "active" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeStatusFilter("active")'>
+                    <i class="bi bi-person-check me-2"></i> Activos
+                </button>
+                <button class="uta-tab-btn @(_statusFilter == "inactive" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeStatusFilter("inactive")'>
+                    <i class="bi bi-person-x me-2"></i> Inactivos
+                </button>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+    
+    <div class="uta-card">
+        <div class="uta-card__header">
+            <div class="uta-card__header-left">
+                <i class="bi bi-search uta-card__header-icon"></i>
+                Directorio y Búsqueda
+            </div>
+        </div>
+        <div class="uta-card__body">
+            <div class="uta-search-bar" style="max-width: 800px; margin: 0.5rem auto 2rem auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <select class="uta-search-bar__select" @bind="SearchCriterion">
+                    <option value="card">Cédula</option>
+                    <option value="name">Apellido</option>
+                    <option value="id">ID Interno</option>
+                </select>
+                <input class="uta-search-bar__input" 
+                       type="text" 
+                       value="@SearchTerm" 
+                       @oninput="OnInputSearch"
+                       maxlength="@(SearchCriterion == "name" ? 25 : 10)"
+                       onkeypress="@GetOnKeyPressHandler(SearchCriterion)"
+                       placeholder="Escriba para filtrar clientes..." />
+                
+                <button class="uta-btn uta-btn--primary uta-search-bar__btn" @onclick="LoadCustomersAsync">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="m-0" style="font-size: 0.85rem; font-weight: 700; color: #495057; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="bi bi-list-ul me-2"></i>Listado de Clientes
+                </h6>
+                <span class="uta-badge uta-badge--blue">@PagedCustomers.Count de @TotalItems mostrados</span>
+            </div>
+
+            <div class="uta-table-wrap uta-table-wrap--bordered">
+                <table class="uta-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px; text-align: center;">ID</th>
+                            <th>Nombres y Apellidos</th>
+                            <th style="text-align:center">Cédula</th>
+                            <th style="text-align:center">Teléfono</th>
+                            <th>Correo</th>
+                            <th style="text-align:center">Estado</th>
+                            <AuthorizeView Roles="Administrador">
+                                <th style="text-align:center">Acciones</th>
+                            </AuthorizeView>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!PagedCustomers.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="uta-table__empty">
+                                    <div class="uta-empty-state">
+                                        <div class="uta-empty-state__icon"><i class="bi bi-people"></i></div>
+                                        <div class="uta-empty-state__text">No se encontraron clientes</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var c in PagedCustomers)
+                        {
+                            <tr style="@(!c.IsActive ? "opacity: 0.6; background-color: #f8f9fa;" : "")">
+                                <td style="text-align:center"><span class="uta-code-badge">@c.Id.ToString("D3")</span></td>
+                                <td class="uta-table__bold">@c.LastName @c.Name</td>
+                                <td style="text-align:center">@c.IDCard</td>
+                                <td style="text-align:center;color:#666">@(string.IsNullOrEmpty(c.Phone) ? "—" : c.Phone)</td>
+                                <td style="color:#666">@(string.IsNullOrEmpty(c.Email) ? "—" : c.Email)</td>
+                                <td style="text-align:center">
+                                    @if (c.IsActive)
+                                    {
+                                        <span class="uta-badge uta-badge--blue">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="uta-badge uta-badge--red">Inactivo</span>
+                                    }
+                                </td>
+                                <AuthorizeView Roles="Administrador">
+                                    <td style="text-align:center">
+                                        @if (c.IsActive)
+                                        {
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--maroon me-1" @onclick="() => OpenEditModal(c)" title="Editar">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--red" @onclick="() => ConfirmDelete(c.Id)" title="Eliminar">
+                                                <i class="bi bi-trash3-fill"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--maroon me-1" @onclick="() => PromptReactivate(c)" title="Reactivar">
+                                                <i class="bi bi-person-check-fill"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </AuthorizeView>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (TotalItems > 0)
+            {
+                <div class="uta-pagination-footer rounded-bottom mt-3">
+                    <div class="uta-pagination-info">
+                        <span class="small text-muted">
+                            Se muestran <strong class="uta-text-highlight">@From</strong> a <strong class="uta-text-highlight">@To</strong> de <strong class="uta-text-highlight">@TotalItems</strong> resultados
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">por página</span>
+                        <div class="uta-select-wrapper">
+                            <select class="form-select form-select-sm shadow-none" @onchange="OnPageSizeChanged">
+                                @foreach (var size in new[] { 5, 10, 25, 50 })
+                                {
+                                    <option value="@size" selected="@(PageSize == size)">@size</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex overflow-hidden">
+                        @foreach (var p in VisiblePages)
+                        {
+                            if (p == -1)
+                            {
+                                <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                            }
+                            else
+                            {
+                                var pNum = p;
+                                <button class="uta-pagination-btn @(pNum == CurrentPage ? "uta-pagination-btn--active" : "")"
+                                        @onclick="() => ChangePage(pNum)">@pNum</button>
+                            }
+                        }
+                        <button class="uta-pagination-btn @(!HasNextPage ? "disabled" : "")"
+                                @onclick="() => ChangePage(CurrentPage + 1)"
+                                disabled="@(!HasNextPage)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (ShowModal)
+{
+    <div class="uta-overlay" @onclick="PromptCancelModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title">
+                        <i class="bi @(IsEditMode ? "bi-pencil-square" : "bi-person-plus")"></i> &nbsp;@(IsEditMode ? "Editar Cliente" : "Nuevo Cliente")
+                    </h3>
+                    <p class="uta-modal__subtitle">Complete los datos solicitados a continuación</p>
+                </div>
+                <button class="uta-modal__close" @onclick="PromptCancelModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="uta-modal__body">
+                <div class="uta-form-grid">
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Cédula</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-person-vcard uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("IDCard") ? "is-invalid" : "")" 
+                                   type="text" 
+                                   value="@EditingCustomer.IDCard" 
+                                   @oninput="OnIDCardInput"
+                                   onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                   placeholder="10 DÍGITOS" maxlength="@ValidationConstants.IDCardLength" />
+                        </div>
+                        @if (HasError("IDCard"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("IDCard")</div>
+                        }
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Correo Electrónico</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-envelope uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("Email") ? "is-invalid" : "")" 
+                                   type="text" 
+                                   value="@EditingCustomer.Email" 
+                                   @oninput="OnEmailInput" 
+                                   placeholder="correo@ejemplo.com" maxlength="@ValidationConstants.EmailMax" />
+                        </div>
+                        @if (HasError("Email"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("Email")</div>
+                        }
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Nombre</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-person uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("Name") ? "is-invalid" : "")" 
+                                   type="text" 
+                                   value="@EditingCustomer.Name" 
+                                   @oninput="OnNameInput" 
+                                   onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241 || event.charCode == 193 || event.charCode == 201 || event.charCode == 205 || event.charCode == 211 || event.charCode == 218 || event.charCode == 225 || event.charCode == 233 || event.charCode == 237 || event.charCode == 243 || event.charCode == 250"
+                                   placeholder="NOMBRE" maxlength="@ValidationConstants.NameMax" />
+                        </div>
+                        @if (HasError("Name"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("Name")</div>
+                        }
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Apellido</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-person uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("LastName") ? "is-invalid" : "")" 
+                                   type="text" 
+                                   value="@EditingCustomer.LastName" 
+                                   @oninput="OnLastNameInput" 
+                                   onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241 || event.charCode == 193 || event.charCode == 201 || event.charCode == 205 || event.charCode == 211 || event.charCode == 218 || event.charCode == 225 || event.charCode == 233 || event.charCode == 237 || event.charCode == 243 || event.charCode == 250"
+                                   placeholder="APELLIDO" maxlength="@ValidationConstants.LastNameMax" />
+                        </div>
+                        @if (HasError("LastName"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("LastName")</div>
+                        }
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Teléfono</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-telephone uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("Phone") ? "is-invalid" : "")" 
+                                   type="text" 
+                                   value="@EditingCustomer.Phone" 
+                                   @oninput="OnPhoneInput"
+                                   onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                   placeholder="EJ. 0999999999" maxlength="@ValidationConstants.PhoneLength" />
+                        </div>
+                        @if (HasError("Phone"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("Phone")</div>
+                        }
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Dirección Domiciliaria (@(ValidationConstants.AddressMax - (EditingCustomer.Address?.Length ?? 0)))</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-geo-alt uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon" 
+                                   type="text" 
+                                   value="@EditingCustomer.Address" 
+                                   @oninput="OnAddressInput" 
+                                   placeholder="DIRECCIÓN COMPLETA" maxlength="@ValidationConstants.AddressMax" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="uta-modal__footer">
+                <button class="uta-btn uta-btn--outline" @onclick="PromptCancelModal">Cancelar</button>
+                <button class="uta-btn uta-btn--primary" @onclick="SaveCustomer" disabled="@_errors.Any()">
+                    <i class="bi bi-check2"></i> Guardar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string SearchTerm = string.Empty;
+    private UtaToast _toast = default!;
+    private Dictionary<string, string> _errors = new();
+    private string _statusFilter = "active"; // "active", "inactive", "all"
+
+    private async Task ShowToast(string message, bool isError = false)
+    {
+        if (_toast != null) await _toast.ShowAsync(message, isError);
+    }
+
+    private async Task ChangeStatusFilter(string filter)
+    {
+        _statusFilter = filter;
+        CurrentPage = 1;
+        await LoadCustomersAsync();
+    }
+
+    private void OnNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper(); 
+        EditingCustomer.Name = val;
+        ValidateField("Name", val, "Nombre");
+    }
+
+    private void OnIDCardInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        EditingCustomer.IDCard = val;
+        ValidateField("IDCard", val, "Cédula");
+    }
+
+    private void OnPhoneInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        EditingCustomer.Phone = val;
+        ValidateField("Phone", val, "Teléfono");
+    }
+
+    private void OnLastNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        EditingCustomer.LastName = val;
+        ValidateField("LastName", val, "Apellido");
+    }
+
+    private void OnAddressInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = System.Text.RegularExpressions.Regex.Replace(val, @"^\s+", "");
+        val = System.Text.RegularExpressions.Regex.Replace(val, @"\s{2,}", " ");
+        EditingCustomer.Address = val.ToUpper();
+    }
+
+    private void OnEmailInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString()?.Trim() ?? "";
+        EditingCustomer.Email = val;
+        ValidateField("Email", val, "Correo");
+    }
+
+    private void ValidateField(string field, string val, string label)
+    {
+        _errors.Remove(field);
+        
+        if (string.IsNullOrWhiteSpace(val))
+        {
+            _errors[field] = $"{label} es requerido.";
+            return;
+        }
+
+        if (field == "IDCard")
+        {
+            if (val.Length != 10)
+            {
+                _errors[field] = "La cédula debe tener exactamente 10 dígitos.";
+            }
+            return;
+        }
+
+        if (field == "Phone")
+        {
+            if (val.Length != 10)
+            {
+                _errors[field] = "El teléfono debe tener exactamente 10 dígitos.";
+            }
+            else if (!val.StartsWith("09"))
+            {
+                _errors[field] = "El teléfono debe empezar con '09'.";
+            }
+            return;
+        }
+
+        if (field == "Email" && !IsValidEmail(val))
+        {
+            _errors[field] = "Formato de correo no válido.";
+            return;
+        }
+
+        if ((field == "Name" || field == "LastName") && !System.Text.RegularExpressions.Regex.IsMatch(val, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$"))
+        {
+            _errors[field] = $"{label} solo debe contener letras.";
+            return;
+        }
+
+        if ((field == "Name" || field == "LastName") && val.Length < 2)
+        {
+            _errors[field] = $"{label} debe tener al menos 2 letras.";
+            return;
+        }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address.Equals(email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private bool HasError(string field) => _errors.ContainsKey(field);
+    private string GetError(string field) => _errors.TryGetValue(field, out var error) ? error : "";
+
+    private string _searchCriterion = "card";
+    private string SearchCriterion
+    {
+        get => _searchCriterion;
+        set
+        {
+            if (_searchCriterion != value)
+            {
+                _searchCriterion = value;
+                SearchTerm = string.Empty;
+                CurrentPage = 1;
+                _ = LoadCustomersAsync();
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+    private int TotalItems = 0;
+    private int TotalPages = 1;
+    private int From => TotalItems == 0 ? 0 : ((CurrentPage - 1) * PageSize) + 1;
+    private int To => Math.Min(CurrentPage * PageSize, TotalItems);
+    private bool HasNextPage => CurrentPage < TotalPages;
+    private List<int> VisiblePages => PaginationHelper.GenerateVisiblePages(CurrentPage, TotalPages);
+    
+    private List<CustomerResponseDto> PagedCustomers = new();
+    
+    private bool ShowModal = false;
+    private bool IsEditMode = false;
+    private CreateCustomerRequest EditingCustomer = new();
+    private int CurrentEditingId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomersAsync();
+    }
+
+    private async Task OnInputSearch(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString() ?? string.Empty;
+        CurrentPage = 1;
+        await LoadCustomersAsync();
+    }
+
+    private string GetOnKeyPressHandler(string criterion)
+    {
+        if (criterion == "id" || criterion == "card")
+        {
+            return "return event.charCode >= 48 && event.charCode <= 57"; 
+        }
+        else if (criterion == "name")
+        {
+            return "return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241 || event.charCode == 193 || event.charCode == 201 || event.charCode == 205 || event.charCode == 211 || event.charCode == 218 || event.charCode == 225 || event.charCode == 233 || event.charCode == 237 || event.charCode == 243 || event.charCode == 250";
+        }
+        return "";
+    }
+
+    private async Task LoadCustomersAsync()
+    {
+        try
+        {
+            var result = await CustomerApiService.SearchCustomersAsync(SearchTerm, SearchCriterion, CurrentPage, PageSize, _statusFilter);
+            if (result != null)
+            {
+                PagedCustomers = result.Items.ToList();
+                TotalItems = result.TotalCount;
+                TotalPages = result.TotalPages;
+                if (TotalPages == 0) TotalPages = 1;
+            }
+        }
+        catch (Exception)
+        {
+            await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            PageSize = newSize;
+            CurrentPage = 1;
+            await LoadCustomersAsync();
+        }
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= TotalPages)
+        {
+            CurrentPage = newPage;
+            await LoadCustomersAsync();
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        EditingCustomer = new CreateCustomerRequest();
+        _errors.Clear();
+        IsEditMode = false;
+        ShowModal = true;
+    }
+
+    private void OpenEditModal(CustomerResponseDto customer)
+    {
+        CurrentEditingId = customer.Id;
+        EditingCustomer = new CreateCustomerRequest
+        {
+            IDCard = customer.IDCard,
+            Name = customer.Name,
+            LastName = customer.LastName,
+            Phone = customer.Phone,
+            Address = customer.Address,
+            Email = customer.Email
+        };
+        _errors.Clear();
+        IsEditMode = true;
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task PromptCancelModal()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Cancelar operación?",
+            text = "Los datos ingresados se perderán.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, cancelar",
+            cancelButtonText = "Continuar editando"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            CloseModal();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveCustomer()
+    {
+        // Validar antes de enviar
+        ValidateField("IDCard", EditingCustomer.IDCard, "Cédula");
+        ValidateField("Phone", EditingCustomer.Phone, "Teléfono");
+        ValidateField("Name", EditingCustomer.Name, "Nombre");
+        ValidateField("LastName", EditingCustomer.LastName, "Apellido");
+        ValidateField("Email", EditingCustomer.Email, "Correo");
+        
+        if (_errors.Any())
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Formulario Inválido", "Por favor corrija los errores en el formulario.", "warning");
+            return;
+        }
+
+        HttpResponseMessage response;
+        try
+        {
+            if (IsEditMode)
+            {
+                var updateReq = new UpdateCustomerRequest
+                {
+                    Id = CurrentEditingId,
+                    IDCard = EditingCustomer.IDCard,
+                    Name = EditingCustomer.Name,
+                    LastName = EditingCustomer.LastName,
+                    Phone = EditingCustomer.Phone,
+                    Address = EditingCustomer.Address,
+                    Email = EditingCustomer.Email
+                };
+                response = await CustomerApiService.UpdateCustomerAsync(CurrentEditingId, updateReq);
+            }
+            else
+            {
+                response = await CustomerApiService.CreateCustomerAsync(EditingCustomer);
+            }
+
+            await HandleSaveResponse(response);
+        }
+        catch (Exception)
+        {
+            await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+        }
+    }
+
+    private async Task HandleSaveResponse(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            ShowModal = false;
+            await LoadCustomersAsync();
+            await ShowToast(IsEditMode ? "Cliente actualizado correctamente." : "Cliente guardado exitosamente.");
+        }
+        else
+        {
+            var errorJson = await response.Content.ReadAsStringAsync();
+            try
+            {
+                var errorObj = System.Text.Json.JsonDocument.Parse(errorJson);
+                var isInactive = errorObj.RootElement.TryGetProperty("isInactive", out var inactiveProp) && inactiveProp.GetBoolean();
+                
+                if (isInactive)
+                {
+                    var customerId = errorObj.RootElement.GetProperty("customerId").GetInt32();
+                    var confirm = await JS.InvokeAsync<object>("Swal.fire", new
+                    {
+                        title = "Cliente Inactivo Encontrado",
+                        text = "Ya existe un cliente con esta cédula pero fue eliminado. ¿Desea reactivarlo y actualizar sus datos?",
+                        icon = "question",
+                        showCancelButton = true,
+                        confirmButtonColor = "#28a745",
+                        cancelButtonColor = "#6c757d",
+                        confirmButtonText = "Sí, reactivar",
+                        cancelButtonText = "Cancelar"
+                    });
+
+                    var jsonConfirm = System.Text.Json.JsonSerializer.Serialize(confirm);
+                    if (jsonConfirm.Contains("\"isConfirmed\":true"))
+                    {
+                        var updateReq = new UpdateCustomerRequest
+                        {
+                            Id = customerId,
+                            IDCard = EditingCustomer.IDCard,
+                            Name = EditingCustomer.Name,
+                            LastName = EditingCustomer.LastName,
+                            Phone = EditingCustomer.Phone,
+                            Address = EditingCustomer.Address,
+                            Email = EditingCustomer.Email
+                        };
+                        var reactivateResponse = await CustomerApiService.ReactivateCustomerAsync(customerId, updateReq);
+                        await HandleSaveResponse(reactivateResponse);
+                    }
+                    return;
+                }
+
+                var msg = errorObj.RootElement.TryGetProperty("message", out var msgProp) ? msgProp.GetString() : "Error desconocido";
+                await JS.InvokeVoidAsync("Swal.fire", "Error", msg, "error");
+            }
+            catch
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "Ocurrió un error al guardar: " + errorJson, "error");
+            }
+        }
+    }
+
+    private async Task PromptReactivate(CustomerResponseDto customer)
+    {
+        var confirm = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Reactivar Cliente?",
+            text = $"El cliente {customer.LastName} {customer.Name} volverá a estar activo.",
+            icon = "question",
+            showCancelButton = true,
+            confirmButtonColor = "#28a745",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, reactivar",
+            cancelButtonText = "Cancelar"
+        });
+
+        var jsonConfirm = System.Text.Json.JsonSerializer.Serialize(confirm);
+        if (jsonConfirm.Contains("\"isConfirmed\":true"))
+        {
+            try
+            {
+                var updateReq = new UpdateCustomerRequest
+                {
+                    Id = customer.Id,
+                    IDCard = customer.IDCard,
+                    Name = customer.Name,
+                    LastName = customer.LastName,
+                    Phone = customer.Phone,
+                    Address = customer.Address,
+                    Email = customer.Email
+                };
+                var response = await CustomerApiService.ReactivateCustomerAsync(customer.Id, updateReq);
+                await HandleSaveResponse(response);
+            }
+            catch (Exception)
+            {
+                await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+            }
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Eliminar cliente?",
+            text = "El registro se marcará como inactivo.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, eliminar",
+            cancelButtonText = "Cancelar"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            try
+            {
+                var response = await CustomerApiService.DeleteCustomerAsync(id);
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadCustomersAsync();
+                    await ShowToast("El cliente fue inactivado correctamente.");
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("Swal.fire", "Error", "No se pudo inactivar el cliente.", "error");
+                }
+            }
+            catch (Exception)
+            {
+                await ShowToast("Error de conexión: No se pudo comunicar con el servidor.", true);
+            }
+        }
+    }
+}

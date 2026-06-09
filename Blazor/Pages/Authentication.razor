@@ -1,0 +1,146 @@
+@page "/authentication/{action}"
+@layout Blazor.Layout.LoginLayout
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using Microsoft.AspNetCore.Authorization
+@using Blazor.Security
+@using Blazor.Services
+@attribute [AllowAnonymous]
+@inject NavigationManager Navigation
+@inject AuthApiService AuthApiService
+@inject CustomAuthStateProvider AuthStateProvider
+@inject IAccessTokenProvider TokenProvider
+@inject IJSRuntime JS
+
+<RemoteAuthenticatorView Action="@Action">
+    <LoggingIn>
+        <div class="uta-bg-wrapper d-flex flex-column align-items-center justify-content-center" style="height: 100vh;">
+            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #8A1538;"></div>
+            <h5 class="mt-4 text-white" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">Conectando con Microsoft Identity...</h5>
+        </div>
+    </LoggingIn>
+    <CompletingLoggingIn>
+        <div class="uta-bg-wrapper d-flex flex-column align-items-center justify-content-center" style="height: 100vh;">
+            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: #8A1538;"></div>
+            <h5 class="mt-4 text-white" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">Sincronizando cuenta institucional...</h5>
+        </div>
+    </CompletingLoggingIn>
+    <LogInFailed>
+        <div class="uta-bg-wrapper d-flex flex-column align-items-center justify-content-center" style="height: 100vh;">
+            <div class="uta-login-container w-100 d-flex justify-content-center">
+                <div class="uta-login-card text-center p-5" style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(107, 26, 51, 0.3); box-shadow: 0 25px 50px -12px rgba(107, 26, 51, 0.2); border-radius: 30px; max-width: 450px;">
+                    <i class="bi bi-wifi-off mb-4 d-inline-block" style="font-size: 5rem; color: #6B1A33; filter: drop-shadow(0 4px 6px rgba(107, 26, 51, 0.2));"></i>
+                    <h2 class="uta-login-title mb-3" style="color: #1a1a1a; font-weight: 800; font-size: 1.8rem; letter-spacing: -0.025em;">Autenticación Fallida</h2>
+                    <p class="mb-4" style="font-size: 1.05rem; color: #4b5563;">
+                        No se pudo completar el proceso con Microsoft, o usted canceló la solicitud. 
+                        <br/><span style="color: #8A1538; font-weight: 600;">Verifique su conexión e intente nuevamente.</span>
+                    </p>
+                    <button class="btn w-100 py-3 mt-2" style="background: linear-gradient(90deg, #8A1538, #6B1A33); color: white; border-radius: 12px; font-weight: 600; border: none; box-shadow: 0 4px 6px rgba(107, 26, 51, 0.2); transition: all 0.3s ease;" @onclick='() => Navigation.NavigateTo("/login")'>
+                        <i class="bi bi-arrow-left me-2"></i>Volver al Inicio de Sesión
+                    </button>
+                    <div class="mt-4" style="color: #6c757d; font-size: 0.85rem;">
+                        <p class="m-0">&copy; @DateTime.Now.Year Sistema UTA POS.<br/>Todos los derechos reservados.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </LogInFailed>
+</RemoteAuthenticatorView>
+
+@code {
+    [Parameter] public string? Action { get; set; }
+    private bool _isExchanging = false;
+
+    protected override void OnInitialized()
+    {
+        _ = RunTokenCheckLoop();
+    }
+
+    private async Task RunTokenCheckLoop()
+    {
+        try 
+        {
+            await Task.Delay(800); // Esperar que MSAL inicie
+
+            // Buscar el token repetidamente si MSAL se queda colgado (silent flow)
+            for(int i = 0; i < 15; i++)
+            {
+                if (_isExchanging) return;
+
+                var idToken = await GetIdTokenFromStorage();
+                if (!string.IsNullOrEmpty(idToken))
+                {
+                    _isExchanging = true;
+                    await ProcessTokenExchange(idToken);
+                    return;
+                }
+                await Task.Delay(1000);
+            }
+        }
+        catch { }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Action == "login-callback" || Action == "login")
+        {
+            await Task.Delay(1000); // Dar tiempor a MSAL para procesar la redirección
+
+            if (_isExchanging) return;
+
+            var idToken = await GetIdTokenFromStorage();
+            if (!string.IsNullOrEmpty(idToken))
+            {
+                _isExchanging = true;
+                await ProcessTokenExchange(idToken);
+            }
+        }
+    }
+
+    private async Task<string?> GetIdTokenFromStorage()
+    {
+        return await JS.InvokeAsync<string>("eval", @"
+            (function() {
+                function searchStorage(storage) {
+                    for (let i = 0; i < storage.length; i++) {
+                        let key = storage.key(i);
+                        if (key && key.indexOf('idtoken') !== -1) {
+                            try {
+                                let val = JSON.parse(storage.getItem(key));
+                                if (val && val.secret && val.credentialType === 'IdToken') {
+                                    return val.secret;
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                    return null;
+                }
+                return searchStorage(sessionStorage) || searchStorage(localStorage);
+            })()
+        ");
+    }
+
+    private async Task ProcessTokenExchange(string tokenValue)
+    {
+        var authResult = await AuthApiService.MicrosoftLoginAsync(tokenValue);
+
+        if (authResult.IsSuccess && !string.IsNullOrEmpty(authResult.Token))
+        {
+            await AuthStateProvider.NotifyUserAuthentication(authResult.Token);
+
+            // Guardar el Refresh Token para la autorenovación
+            if (!string.IsNullOrEmpty(authResult.RefreshToken))
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "refreshToken", authResult.RefreshToken);
+            }
+
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _isExchanging = false;
+            // Limpiamos los rastros por si el token expiró o falló
+            await JS.InvokeVoidAsync("sessionStorage.clear");
+            Navigation.NavigateTo($"/login?error={Uri.EscapeDataString(authResult.Message ?? "Error en sincronización institucional")}");
+        }
+    }
+}

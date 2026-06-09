@@ -1,0 +1,30 @@
+﻿@page "/not-found"
+@inject NavigationManager NavManager
+
+<PageTitle>Página no encontrada - MI NEGOCIO</PageTitle>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<div class="uta-page uta-page--centered">
+    <div class="uta-error-card">
+        <div class="uta-error-card__icon">
+            🧭
+        </div>
+        <h1 class="uta-error-card__code">404</h1>
+        <h2 class="uta-error-card__title">Página no encontrada</h2>
+        <p class="uta-error-card__desc">
+            Lo sentimos, parece que te has perdido. La ruta a la que intentas acceder no existe, fue movida o no tienes los permisos necesarios.
+        </p>
+        
+        <button class="uta-btn uta-btn--primary uta-btn--lg mt-4" @onclick="IrAlInicio">
+            🏠 &nbsp;Volver al Inicio
+        </button>
+    </div>
+</div>
+
+@code {
+    private void IrAlInicio()
+    {
+        NavManager.NavigateTo("/");
+    }
+}

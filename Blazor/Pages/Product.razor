@@ -1,0 +1,944 @@
+@page "/productos"
+@using Application.Features.Products
+@using Application.Features.Inventory
+@using Application.Common
+@using Domain.Common
+@using Blazor.Helpers
+@using Blazor.Services
+@using System.Timers
+@inject PosApiService PosApiService
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "Administrador")]
+
+@if (!string.IsNullOrEmpty(_alertMessage))
+{
+    <div class="uta-toast-wrapper">
+        <div class="uta-toast @(_isError ? "uta-toast--error" : "uta-toast--success")">
+            <div class="uta-toast__icon">
+                <i class="bi @(_isError ? "bi-exclamation-triangle-fill" : "bi-check2-circle")"></i>
+            </div>
+            <div class="uta-toast__body">
+                <div class="uta-toast__title">@(_isError ? "Atención" : "¡Éxito!")</div>
+                <div class="uta-toast__message">@_alertMessage</div>
+            </div>
+            <button class="uta-toast__close" @onclick="() => _alertMessage = string.Empty">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="uta-toast__progress"></div>
+        </div>
+    </div>
+}
+
+<div class="uta-page">
+    <div class="uta-page-header">
+        <div class="uta-page-header__left">
+            <h1 class="uta-page-title">
+                <i class="bi bi-box-seam text-warning uta-page-title__icon"></i>
+                Gestión de Productos
+            </h1>
+            <p class="uta-page-subtitle">Administre el catálogo de productos registrados en el sistema</p>
+        </div>
+        <div class="uta-page-header__right">
+            <AuthorizeView Roles="Administrador">
+                <button class="uta-btn uta-btn--primary" @onclick="OpenCreateModal">
+                    <i class="bi bi-plus-lg"></i> &nbsp;Nuevo Producto
+                </button>
+            </AuthorizeView>
+        </div>
+    </div>
+
+    <!-- Filtro de Estado para Administradores -->
+    <AuthorizeView Roles="Administrador">
+        <Authorized>
+            <div class="uta-tabs mb-4">
+                <button class="uta-tab-btn @(_statusFilter == "all" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeStatusFilter("all")'>
+                    <i class="bi bi-box me-2"></i> Todos
+                </button>
+                <button class="uta-tab-btn @(_statusFilter == "active" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeStatusFilter("active")'>
+                    <i class="bi bi-check-circle me-2"></i> Activos
+                </button>
+                <button class="uta-tab-btn @(_statusFilter == "inactive" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeStatusFilter("inactive")'>
+                    <i class="bi bi-x-circle me-2"></i> Inactivos
+                </button>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+    <div class="uta-card">
+        <div class="uta-card__header">
+            <div class="uta-card__header-left">
+                <i class="bi bi-search uta-card__header-icon"></i>
+                Catálogo y Búsqueda
+            </div>
+        </div>
+        <div class="uta-card__body">
+            <div class="uta-search-bar" style="max-width: 800px; margin: 0.5rem auto 2rem auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <select class="uta-search-bar__select" @bind="SearchCriterion">
+                    <option value="name">Descripción</option>
+                    <option value="id">Código ID</option>
+                </select>
+                <input class="uta-search-bar__input" 
+                       type="text" 
+                       value="@SearchTerm" 
+                       @oninput="OnInputSearch"
+                       placeholder="Buscar productos por nombre o ID..." />
+                <div class="uta-search-bar__icon-container px-3 d-flex align-items-center bg-light">
+                    <i class="bi bi-search text-muted"></i>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="m-0" style="font-size: 0.85rem; font-weight: 700; color: #495057; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="bi bi-list-ul me-2"></i>Listado de Productos
+                </h6>
+                <span class="uta-badge uta-badge--blue">@PagedProducts.Count de @TotalItems mostrados</span>
+            </div>
+
+            <div class="uta-table-wrap uta-table-wrap--bordered">
+                <table class="uta-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px; text-align: center;">Código (ID)</th>
+                            <th>Descripción</th>
+                            <th style="text-align:right">Precio Unitario</th>
+                            <th style="text-align:center">Stock Disponible</th>
+                            <th style="text-align:center">Estado</th>
+                            <AuthorizeView Roles="Administrador">
+                                <th style="text-align:center">Acciones</th>
+                            </AuthorizeView>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!PagedProducts.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="uta-table__empty">
+                                    <div class="uta-empty-state">
+                                        <div class="uta-empty-state__icon"><i class="bi bi-box-seam"></i></div>
+                                        <div class="uta-empty-state__text">No se encontraron productos</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var p in PagedProducts)
+                        {
+                            <tr style="@(!p.IsActive ? "opacity: 0.6; background-color: #f8f9fa;" : "")">
+                                <td style="text-align:center"><span class="uta-code-badge">@p.Id.ToString("D4")</span></td>
+                                <td class="uta-table__bold">@p.Name</td>
+                                <td style="text-align:right">
+                                    <div class="uta-price uta-price--right">
+                                        <span class="uta-price__symbol">$</span>
+                                        <span class="uta-price__value">@p.UnitPrice.ToString("N2")</span>
+                                    </div>
+                                </td>
+                                <td style="text-align:center">
+                                    <span class="uta-badge @(p.Stock > 5 ? "uta-badge--green" : "uta-badge--red")" @onclick="() => OpenKardexModal(p)" style="cursor:pointer" title="Ver Historial (Kárdex)">
+                                        @p.Stock uds.
+                                    </span>
+                                </td>
+                                <td style="text-align:center">
+                                    @if (p.IsActive)
+                                    {
+                                        <span class="uta-badge uta-badge--blue">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="uta-badge uta-badge--red">Inactivo</span>
+                                    }
+                                </td>
+                                <AuthorizeView Roles="Administrador">
+                                    <td style="text-align:center">
+                                        @if (p.IsActive)
+                                        {
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--green me-1" @onclick="() => OpenRestockModal(p)" title="Reabastecer Stock">
+                                                <i class="bi bi-box-arrow-in-down"></i>
+                                            </button>
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--blue me-1" @onclick="() => OpenKardexModal(p)" title="Ver Kárdex">
+                                                <i class="bi bi-journal-text"></i>
+                                            </button>
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--maroon me-1" @onclick="() => OpenEditModal(p)" title="Editar Información">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--red" @onclick="() => ConfirmDelete(p.Id)" title="Eliminar">
+                                                <i class="bi bi-trash3-fill"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="uta-icon-btn-outline uta-icon-btn-outline--maroon me-1" @onclick="() => PromptReactivate(p)" title="Reactivar">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </AuthorizeView>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (TotalItems > 0)
+            {
+                <div class="uta-pagination-footer rounded-bottom mt-3">
+                    <div class="uta-pagination-info">
+                        <span class="small text-muted">
+                            Se muestran <strong class="uta-text-highlight">@From</strong> a <strong class="uta-text-highlight">@To</strong> de <strong class="uta-text-highlight">@TotalItems</strong> resultados
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">por página</span>
+                        <div class="uta-select-wrapper">
+                            <select class="form-select form-select-sm shadow-none" @onchange="OnPageSizeChanged">
+                                @foreach (var size in new[] { 5, 10, 25, 50 })
+                                {
+                                    <option value="@size" selected="@(PageSize == size)">@size</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex overflow-hidden">
+                        @foreach (var p in VisiblePages)
+                        {
+                            if (p == -1)
+                            {
+                                <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                            }
+                            else
+                            {
+                                var pNum = p;
+                                <button class="uta-pagination-btn @(pNum == CurrentPage ? "uta-pagination-btn--active" : "")"
+                                        @onclick="() => ChangePage(pNum)">@pNum</button>
+                            }
+                        }
+                        <button class="uta-pagination-btn @(!HasNextPage ? "disabled" : "")"
+                                @onclick="() => ChangePage(CurrentPage + 1)"
+                                disabled="@(!HasNextPage)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (ShowModal)
+{
+    <div class="uta-overlay" @onclick="PromptCancelModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title">
+                        <i class="bi @(IsEditMode ? "bi-pencil-square" : "bi-box-seam")"></i> &nbsp;@(IsEditMode ? "Editar Producto" : "Nuevo Producto")
+                    </h3>
+                    <p class="uta-modal__subtitle">Complete los datos solicitados a continuación</p>
+                </div>
+                <button class="uta-modal__close" @onclick="PromptCancelModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="uta-modal__body">
+                <div class="uta-form-grid">
+                    <div class="uta-form-group" style="grid-column: 1 / -1;">
+                        <label class="uta-form-label">Descripción del Producto (@(ValidationConstants.ProductNameMax - (EditingProduct.Name?.Length ?? 0)))</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-fonts uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("Name") ? "is-invalid" : "")" 
+                                   type="text" 
+                                   value="@EditingProduct.Name" 
+                                   @oninput="OnNameInput"
+                                   placeholder="NOMBRE DESCRIPTIVO DEL PRODUCTO" maxlength="@ValidationConstants.ProductNameMax" />
+                        </div>
+                        @if (HasError("Name"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("Name")</div>
+                        }
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Precio de Venta ($)</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-currency-dollar uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon @(HasError("Price") ? "is-invalid" : "")" 
+                                   type="number" step="0.01" 
+                                   value="@EditingProduct.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" 
+                                   @oninput="OnPriceInput"
+                                   placeholder="0.00" />
+                        </div>
+                        @if (HasError("Price"))
+                        {
+                            <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("Price")</div>
+                        }
+                    </div>
+                    @if (!IsEditMode)
+                    {
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Stock Inicial</label>
+                            <div class="uta-input-icon-wrapper">
+                                <i class="bi bi-boxes uta-input-icon"></i>
+                                <input class="uta-form-control uta-form-control--with-icon @(HasError("Stock") ? "is-invalid" : "")" 
+                                       type="number" step="1" 
+                                       value="@EditingProduct.Stock" 
+                                       @oninput="OnStockInput"
+                                       placeholder="CANT." />
+                            </div>
+                            @if (HasError("Stock"))
+                            {
+                                <div class="text-danger mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-circle"></i> @GetError("Stock")</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="uta-modal__footer">
+                <button class="uta-btn uta-btn--outline" @onclick="PromptCancelModal">Cancelar</button>
+                <button class="uta-btn uta-btn--primary" @onclick="SaveProduct" disabled="@(_errors.Any() || string.IsNullOrWhiteSpace(EditingProduct.Name))">
+                    <i class="bi bi-check2"></i> Guardar Producto
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- MODAL DE REABASTECIMIENTO -->
+@if (ShowRestockModal)
+{
+    <div class="uta-overlay" @onclick="CloseRestockModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-box-arrow-in-down"></i> &nbsp;Reabastecer Inventario</h3>
+                    <p class="uta-modal__subtitle">Ingrese nueva mercadería al stock</p>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseRestockModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="uta-modal__body">
+                <div class="alert alert-success mb-4 py-3" style="font-size: 0.9rem; background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; border-radius: 8px;">
+                    <div class="d-flex align-items-center mb-1">
+                        <i class="bi bi-box-seam me-2"></i> <strong>Producto:</strong> &nbsp;@SelectedProductName
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-bar-chart me-2"></i> <strong>Stock Actual:</strong> &nbsp;@CurrentStock uds.
+                    </div>
+                </div>
+                <div class="uta-form-grid">
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Cantidad a Ingresar (+)</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-plus-slash-minus uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon" type="number" min="1" @bind="RestockData.Quantity" placeholder="1" />
+                        </div>
+                    </div>
+                    <div class="uta-form-group">
+                        <label class="uta-form-label">Costo Unitario de Compra ($)</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-currency-dollar uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon" type="number" step="0.01" @bind="RestockData.UnitCost" placeholder="0.00" />
+                        </div>
+                    </div>
+                    <div class="uta-form-group" style="grid-column: 1 / -1;">
+                        <label class="uta-form-label">Referencia / Proveedor</label>
+                        <div class="uta-input-icon-wrapper">
+                            <i class="bi bi-card-text uta-input-icon"></i>
+                            <input class="uta-form-control uta-form-control--with-icon" type="text" placeholder="Ej: Factura #123 - Prov. ABC" @bind="RestockData.Reference" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="uta-modal__footer">
+                <button class="uta-btn uta-btn--outline" @onclick="CloseRestockModal">Cancelar</button>
+                <button class="uta-btn uta-btn--primary" @onclick="ProcessRestock" disabled="@(RestockData.Quantity <= 0)">
+                    <i class="bi bi-check2"></i> Confirmar Ingreso
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- MODAL DE KÁRDEX (HISTORIAL) -->
+@if (ShowKardexModal)
+{
+    <div class="uta-overlay" @onclick="CloseKardexModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title"><i class="bi bi-journal-text"></i> &nbsp;Kárdex de Inventario</h3>
+                    <p class="uta-modal__subtitle">Historial completo de movimientos: @SelectedProductName</p>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseKardexModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="uta-modal__body p-0">
+                <div class="uta-table-wrap">
+                    <table class="uta-table">
+                        <thead>
+                            <tr style="background-color: #f8f9fa;">
+                                <th>Fecha</th>
+                                <th style="text-align:center">Tipo</th>
+                                <th style="text-align:center">Cant.</th>
+                                <th style="text-align:center">Ant.</th>
+                                <th style="text-align:center">Nuevo</th>
+                                <th>Referencia</th>
+                                <th>Responsable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!KardexMovements.Any())
+                            {
+                                <tr>
+                                    <td colspan="7" class="uta-table__empty">No hay movimientos registrados</td>
+                                </tr>
+                            }
+                            @foreach (var m in PagedKardexMovements)
+                            {
+                                <tr>
+                                    <td style="font-size: 0.8rem; color: #666;">@m.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td style="text-align:center">
+                                        <span class="uta-badge @(GetMovementBadgeClass(m.Type))">@m.TypeName</span>
+                                    </td>
+                                    <td style="text-align:center; font-weight: 700;">
+                                        @((m.Type == Domain.Enums.MovementType.Sale || m.Type == Domain.Enums.MovementType.AdjustmentRemove) ? "-" : "+")@m.Quantity
+                                    </td>
+                                    <td style="text-align:center; color: #888;">@m.PreviousStock</td>
+                                    <td style="text-align:center; font-weight: 600;">@m.NewStock</td>
+                                    <td style="font-size: 0.8rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@m.Reference">@m.Reference</td>
+                                    <td style="font-size: 0.8rem; font-weight: 600; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@m.CreatedBy">@FormatUsername(m.CreatedBy)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (KardexTotalItems > 0)
+                {
+                    <div class="uta-pagination-footer rounded-bottom mt-3">
+                        <div class="uta-pagination-info">
+                            <span class="small text-muted">
+                                Se muestran <strong class="uta-text-highlight">@KardexFrom</strong> a <strong class="uta-text-highlight">@KardexTo</strong> de <strong class="uta-text-highlight">@KardexTotalItems</strong> movimientos
+                            </span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted">por página</span>
+                            <div class="uta-select-wrapper">
+                                <select class="form-select form-select-sm shadow-none" @bind="KardexPageSize" @bind:after="() => ChangeKardexPage(1)">
+                                    @foreach (var size in new[] { 5, 10, 25 })
+                                    {
+                                        <option value="@size">@size</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-flex overflow-hidden">
+                            @foreach (var p in VisiblePagesKardex)
+                            {
+                                if (p == -1)
+                                {
+                                    <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                                }
+                                else
+                                {
+                                    var pNum = p;
+                                    <button class="uta-pagination-btn @(pNum == KardexCurrentPage ? "uta-pagination-btn--active" : "")"
+                                            @onclick="() => ChangeKardexPage(pNum)">@pNum</button>
+                                }
+                            }
+                            <button class="uta-pagination-btn @(!HasNextKardexPage ? "disabled" : "")"
+                                    @onclick="() => ChangeKardexPage(KardexCurrentPage + 1)"
+                                    disabled="@(!HasNextKardexPage)">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="uta-modal__footer">
+                <button class="uta-btn uta-btn--primary" @onclick="CloseKardexModal">Cerrar Historial</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string SearchTerm = string.Empty;
+    private string _alertMessage = "";
+    private bool _isError = false;
+    private Dictionary<string, string> _errors = new();
+    private string _statusFilter = "active"; // "active", "inactive", "all"
+
+    private async Task ShowToast(string message, bool isError = false)
+    {
+        _alertMessage = message;
+        _isError = isError;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _alertMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task ChangeStatusFilter(string filter)
+    {
+        _statusFilter = filter;
+        CurrentPage = 1;
+        await LoadProductsAsync();
+    }
+
+    private void OnNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = System.Text.RegularExpressions.Regex.Replace(val, @"^\s+", "");
+        val = System.Text.RegularExpressions.Regex.Replace(val, @"\s{2,}", " ");
+        EditingProduct.Name = val.ToUpper();
+        ValidateField("Name", EditingProduct.Name, "Descripción");
+    }
+
+    private void OnPriceInput(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out decimal val))
+        {
+            EditingProduct.UnitPrice = val;
+            ValidateField("Price", val.ToString(), "Precio");
+        }
+    }
+
+    private void OnStockInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val))
+        {
+            EditingProduct.Stock = val;
+            ValidateField("Stock", val.ToString(), "Stock");
+        }
+    }
+
+    private void ValidateField(string field, string val, string label)
+    {
+        _errors.Remove(field);
+        
+        if (field == "Name")
+        {
+            if (string.IsNullOrWhiteSpace(val))
+                _errors[field] = $"{label} es requerida.";
+            else if (val.Length < 3)
+                _errors[field] = $"{label} debe tener al menos 3 caracteres.";
+            return;
+        }
+
+        if (field == "Price")
+        {
+            if (decimal.TryParse(val, out decimal price) && price < 0)
+                _errors[field] = "El precio no puede ser negativo.";
+            return;
+        }
+
+        if (field == "Stock")
+        {
+            if (int.TryParse(val, out int stock) && stock < 0)
+                _errors[field] = "El stock no puede ser negativo.";
+            return;
+        }
+    }
+
+    private bool HasError(string field) => _errors.ContainsKey(field);
+    private string GetError(string field) => _errors.TryGetValue(field, out var error) ? error : "";
+
+    private string _searchCriterion = "name";
+    private string SearchCriterion
+    {
+        get => _searchCriterion;
+        set
+        {
+            if (_searchCriterion != value)
+            {
+                _searchCriterion = value;
+                SearchTerm = string.Empty;
+                CurrentPage = 1;
+                _ = LoadProductsAsync();
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+    private int TotalItems = 0;
+    private int TotalPages = 1;
+    private int From => TotalItems == 0 ? 0 : ((CurrentPage - 1) * PageSize) + 1;
+    private int To => Math.Min(CurrentPage * PageSize, TotalItems);
+    private bool HasNextPage => CurrentPage < TotalPages;
+    private List<int> VisiblePages => PaginationHelper.GenerateVisiblePages(CurrentPage, TotalPages);
+
+    private List<ProductResponseDto> PagedProducts = new();
+    private Timer? _debounceTimer;
+
+    private bool ShowModal = false;
+    private bool IsEditMode = false;
+    private CreateProductRequest EditingProduct = new();
+    private int CurrentEditingId = 0;
+
+    // REABASTECIMIENTO
+    private bool ShowRestockModal = false;
+    private RestockRequest RestockData = new();
+    private string SelectedProductName = "";
+    private int CurrentStock = 0;
+
+    // KÁRDEX
+    private bool ShowKardexModal = false;
+    private List<InventoryMovementResponseDto> KardexMovements = new();
+
+    // KÁRDEX PAGINATION
+    private int KardexCurrentPage = 1;
+    private int KardexPageSize = 5;
+    private int KardexTotalItems => KardexMovements.Count;
+    private int KardexTotalPages => (int)Math.Ceiling(KardexTotalItems / (double)KardexPageSize);
+    private int KardexFrom => KardexTotalItems == 0 ? 0 : ((KardexCurrentPage - 1) * KardexPageSize) + 1;
+    private int KardexTo => Math.Min(KardexCurrentPage * KardexPageSize, KardexTotalItems);
+    private bool HasNextKardexPage => KardexCurrentPage < KardexTotalPages;
+    private List<int> VisiblePagesKardex => PaginationHelper.GenerateVisiblePages(KardexCurrentPage, KardexTotalPages > 0 ? KardexTotalPages : 1);
+    private List<InventoryMovementResponseDto> PagedKardexMovements => KardexMovements.Skip((KardexCurrentPage - 1) * KardexPageSize).Take(KardexPageSize).ToList();
+
+    private void ChangeKardexPage(int page)
+    {
+        if (page >= 1 && page <= KardexTotalPages)
+        {
+            KardexCurrentPage = page;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _debounceTimer = new Timer(300);
+        _debounceTimer.Elapsed += async (s, e) => await InvokeAsync(LoadProductsAsync);
+        _debounceTimer.AutoReset = false;
+
+        await LoadProductsAsync();
+    }
+
+    private void OnInputSearch(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString() ?? string.Empty;
+        CurrentPage = 1;
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        var result = await PosApiService.GetPagedProductsAsync(CurrentPage, PageSize, SearchTerm, SearchCriterion, _statusFilter);
+        if (result != null)
+        {
+            PagedProducts = result.Items.ToList();
+            TotalItems = result.TotalCount;
+            TotalPages = result.TotalPages;
+            if (TotalPages == 0) TotalPages = 1;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            PageSize = newSize;
+            CurrentPage = 1;
+            await LoadProductsAsync();
+        }
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= TotalPages)
+        {
+            CurrentPage = newPage;
+            await LoadProductsAsync();
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        EditingProduct = new CreateProductRequest();
+        _errors.Clear();
+        IsEditMode = false;
+        ShowModal = true;
+    }
+
+    private void OpenEditModal(ProductResponseDto product)
+    {
+        CurrentEditingId = product.Id;
+        EditingProduct = new CreateProductRequest
+        {
+            Name = product.Name,
+            UnitPrice = product.UnitPrice,
+            Stock = product.Stock
+        };
+        _errors.Clear();
+        IsEditMode = true;
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task PromptCancelModal()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Cancelar operación?",
+            text = "Los datos ingresados se perderán.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, cancelar",
+            cancelButtonText = "Continuar editando"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            CloseModal();
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveProduct()
+    {
+        // Final validation
+        ValidateField("Name", EditingProduct.Name, "Descripción");
+        ValidateField("Price", EditingProduct.UnitPrice.ToString(), "Precio");
+
+        if (_errors.Any())
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Formulario Inválido", "Por favor corrija los errores antes de guardar.", "warning");
+            return;
+        }
+
+        HttpResponseMessage response;
+        if (IsEditMode)
+        {
+            var updateReq = new UpdateProductRequest
+            {
+                Id = CurrentEditingId,
+                Name = EditingProduct.Name,
+                UnitPrice = EditingProduct.UnitPrice
+            };
+            response = await PosApiService.UpdateProductAsync(CurrentEditingId, updateReq);
+        }
+        else
+        {
+            response = await PosApiService.CreateProductAsync(EditingProduct);
+        }
+
+        await HandleSaveResponse(response);
+    }
+
+    private async Task HandleSaveResponse(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            ShowModal = false;
+            await LoadProductsAsync();
+            await ShowToast(IsEditMode ? "Producto actualizado correctamente." : "Producto agregado exitosamente.");
+        }
+        else
+        {
+            var errorJson = await response.Content.ReadAsStringAsync();
+            try
+            {
+                var errorObj = System.Text.Json.JsonDocument.Parse(errorJson);
+                var isInactive = errorObj.RootElement.TryGetProperty("isInactive", out var inactiveProp) && inactiveProp.GetBoolean();
+                var isActive = errorObj.RootElement.TryGetProperty("isActive", out var activeProp) && activeProp.GetBoolean();
+
+                if (isActive)
+                {
+                    var productId = errorObj.RootElement.GetProperty("productId").GetInt32();
+                    var confirm = await JS.InvokeAsync<object>("Swal.fire", new
+                    {
+                        title = "Producto Existente",
+                        text = "Este producto ya se encuentra registrado y activo. ¿Desea reabastecer su stock en lugar de crear uno nuevo?",
+                        icon = "info",
+                        showCancelButton = true,
+                        confirmButtonColor = "#0d6efd",
+                        cancelButtonColor = "#6c757d",
+                        confirmButtonText = "Sí, reabastecer",
+                        cancelButtonText = "Cancelar"
+                    });
+
+                    var jsonConfirm = System.Text.Json.JsonSerializer.Serialize(confirm);
+                    if (jsonConfirm.Contains("\"isConfirmed\":true"))
+                    {
+                        ShowModal = false;
+
+                        var p = PagedProducts.FirstOrDefault(x => x.Id == productId);
+                        if (p != null)
+                        {
+                            OpenRestockModal(p);
+                        }
+                        else
+                        {
+                            SelectedProductName = EditingProduct.Name;
+                            CurrentStock = 0; 
+                            RestockData = new RestockRequest { ProductId = productId, Quantity = 1, UnitCost = 0 };
+                            ShowRestockModal = true;
+                        }
+                        StateHasChanged();
+                    }
+                    return;
+                }
+
+                if (isInactive)
+                {
+                    var productId = errorObj.RootElement.GetProperty("productId").GetInt32();
+                    var confirm = await JS.InvokeAsync<object>("Swal.fire", new
+                    {
+                        title = "Producto Inactivo Encontrado",
+                        text = "Ya existe un producto con este nombre pero fue eliminado. ¿Desea reactivarlo?",
+                        icon = "question",
+                        showCancelButton = true,
+                        confirmButtonColor = "#28a745",
+                        cancelButtonColor = "#6c757d",
+                        confirmButtonText = "Sí, reactivar",
+                        cancelButtonText = "Cancelar"
+                    });
+
+                    var jsonConfirm = System.Text.Json.JsonSerializer.Serialize(confirm);
+                    if (jsonConfirm.Contains("\"isConfirmed\":true"))
+                    {
+                        var responseReactivate = await PosApiService.ReactivateProductAsync(productId);
+                        if (responseReactivate.IsSuccessStatusCode)
+                        {
+                            var updateReq = new UpdateProductRequest
+                            {
+                                Id = productId,
+                                Name = EditingProduct.Name,
+                                UnitPrice = EditingProduct.UnitPrice
+                            };
+                            var responseUpdate = await PosApiService.UpdateProductAsync(productId, updateReq);
+                            await HandleSaveResponse(responseUpdate);
+                        }
+                    }
+                    return;
+                }
+
+                var msg = errorObj.RootElement.TryGetProperty("message", out var msgProp) ? msgProp.GetString() : "Error desconocido";
+                await JS.InvokeVoidAsync("Swal.fire", "Conflicto", msg, "warning");
+            }
+            catch
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "Ocurrió un error al guardar: " + errorJson, "error");
+            }
+        }
+    }
+
+    private void OpenRestockModal(ProductResponseDto p)
+    {
+        SelectedProductName = p.Name;
+        CurrentStock = p.Stock;
+        RestockData = new RestockRequest { ProductId = p.Id, Quantity = 1, UnitCost = 0 };
+        ShowRestockModal = true;
+    }
+
+    private void CloseRestockModal() => ShowRestockModal = false;
+
+    private async Task ProcessRestock()
+    {
+        var response = await PosApiService.RestockProductAsync(RestockData);
+        if (response.IsSuccessStatusCode)
+        {
+            ShowRestockModal = false;
+            await LoadProductsAsync();
+            await ShowToast("Stock actualizado correctamente.");
+        }
+        else
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", "Error", "No se pudo reabastecer: " + error, "error");
+        }
+    }
+
+    private async Task OpenKardexModal(ProductResponseDto p)
+    {
+        SelectedProductName = p.Name;
+        KardexMovements = await PosApiService.GetProductMovementsAsync(p.Id);
+        KardexCurrentPage = 1;
+        ShowKardexModal = true;
+    }
+
+    private void CloseKardexModal() => ShowKardexModal = false;
+
+    private string GetMovementBadgeClass(Domain.Enums.MovementType type) => type switch
+    {
+        Domain.Enums.MovementType.InitialStock => "uta-badge--blue",
+        Domain.Enums.MovementType.Replenishment => "uta-badge--green",
+        Domain.Enums.MovementType.Sale => "uta-badge--red",
+        Domain.Enums.MovementType.AdjustmentAdd => "uta-badge--yellow",
+        Domain.Enums.MovementType.AdjustmentRemove => "uta-badge--red",
+        Domain.Enums.MovementType.Return => "uta-badge--blue",
+        _ => "uta-badge--light"
+    };
+
+    private string FormatUsername(string? username)
+    {
+        if (string.IsNullOrWhiteSpace(username)) return "SISTEMA";
+        var parts = username.Split('@');
+        return parts[0].ToUpper();
+    }
+
+    private async Task PromptReactivate(ProductResponseDto product)
+    {
+        var confirm = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Reactivar Producto?",
+            text = $"El producto '{product.Name}' volverá a estar disponible para la venta.",
+            icon = "question",
+            showCancelButton = true,
+            confirmButtonColor = "#28a745",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, reactivar",
+            cancelButtonText = "Cancelar"
+        });
+
+        var jsonConfirm = System.Text.Json.JsonSerializer.Serialize(confirm);
+        if (jsonConfirm.Contains("\"isConfirmed\":true"))
+        {
+            var response = await PosApiService.ReactivateProductAsync(product.Id);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadProductsAsync();
+                await ShowToast("Producto reactivado exitosamente.");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se pudo reactivar el producto.", "error");
+            }
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Eliminar producto?",
+            text = "El registro se marcará como inactivo y no aparecerá en ventas.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, eliminar",
+            cancelButtonText = "Cancelar"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            var response = await PosApiService.DeleteProductAsync(id);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadProductsAsync();
+                await ShowToast("Producto inactivado correctamente.");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se pudo eliminar el producto.", "error");
+            }
+        }
+    }
+}

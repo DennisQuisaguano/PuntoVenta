@@ -1,0 +1,905 @@
+@page "/usuarios"
+@using Application.Features.Users
+@using Application.Common
+@using Domain.Common
+@using Blazor.Helpers
+@inject UserApiService UserApiService
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "Administrador")]
+
+@if (!string.IsNullOrEmpty(_alertMessage))
+{
+    <div class="uta-toast-wrapper">
+        <div class="uta-toast @(_isError ? "uta-toast--error" : "uta-toast--success")">
+            <div class="uta-toast__icon">
+                <i class="bi @(_isError ? "bi-exclamation-triangle-fill" : "bi-check2-circle")"></i>
+            </div>
+            <div class="uta-toast__body">
+                <div class="uta-toast__title">@(_isError ? "Atención" : "¡Éxito!")</div>
+                <div class="uta-toast__message">@_alertMessage</div>
+            </div>
+            <button class="uta-toast__close" @onclick="() => _alertMessage = string.Empty">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="uta-toast__progress"></div>
+        </div>
+    </div>
+}
+
+<div class="uta-page">
+    <div class="uta-page-header">
+        <div class="uta-page-header__left">
+            <h1 class="uta-page-title">
+                <i class="bi bi-person-gear uta-page-title__icon"></i>
+                Gestión de Usuarios
+            </h1>
+            <p class="uta-page-subtitle">Administre las cuentas de acceso y roles del personal activo</p>
+        </div>
+        <div class="uta-page-header__right">
+            <button class="uta-btn uta-btn--primary" @onclick="OpenCreateModal">
+                <i class="bi bi-person-plus"></i> &nbsp;Nuevo Usuario
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros por Pestañas (HCI) -->
+    <div class="uta-tabs mb-4">
+        <button class="uta-tab-btn @(_activeFilter == "activos" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeFilter("activos")'>
+            <i class="bi bi-person-check me-2"></i> Activos
+        </button>
+        <button class="uta-tab-btn @(_activeFilter == "bloqueados" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeFilter("bloqueados")'>
+            <i class="bi bi-person-lock me-2"></i> Bloqueados
+            @if (_blockedCount > 0)
+            {
+                <span class="uta-badge uta-badge--red ms-2">@_blockedCount</span>
+            }
+        </button>
+        <button class="uta-tab-btn @(_activeFilter == "inactivos" ? "uta-tab-btn--active" : "")" @onclick='() => ChangeFilter("inactivos")'>
+            <i class="bi bi-person-x me-2"></i> Inactivos
+        </button>
+    </div>
+
+    <div class="uta-card">
+        <div class="uta-card__header">
+            <div class="uta-card__header-left">
+                <i class="bi bi-search uta-card__header-icon"></i>
+                Búsqueda de Personal
+            </div>
+        </div>
+        <div class="uta-card__body">
+            <div class="uta-search-bar" style="max-width: 800px; margin: 0.5rem auto 2rem auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <select class="uta-search-bar__select" @bind="SearchCriterion">
+                    <option value="name">Apellido</option>
+                    <option value="id">ID Interno</option>
+                    <option value="role">Rol</option>
+                </select>
+                <input class="uta-search-bar__input" 
+                       type="text" 
+                       value="@SearchTerm" 
+                       @oninput="OnInputSearch"
+                       placeholder="Buscar usuarios..." />
+                <div class="uta-search-bar__icon-container px-3 d-flex align-items-center bg-light">
+                    <i class="bi bi-search text-muted"></i>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="m-0" style="font-size: 0.85rem; font-weight: 700; color: #495057; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="bi bi-list-ul me-2"></i>Listado de Personal
+                </h6>
+                <span class="uta-badge uta-badge--blue">@_users.Count() de @TotalItems mostrados</span>
+            </div>
+
+            <div class="uta-table-wrap uta-table-wrap--bordered">
+                <table class="uta-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">ID</th>
+                            <th>Nombre Completo</th>
+                            <th>Usuario</th>
+                            <th style="text-align:center">Rol</th>
+                            <th style="text-align:center">Estado</th>
+                            <th style="text-align:center">Última Conexión</th>
+                            <th style="text-align:center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_users.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="uta-table__empty">
+                                    <div class="uta-empty-state">
+                                        <div class="uta-empty-state__icon"><i class="bi bi-people"></i></div>
+                                        <div class="uta-empty-state__text">No hay usuarios registrados</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var u in _users)
+                        {
+                            <tr>
+                                <td style="text-align:center">@u.Id</td>
+                                <td class="uta-table__bold">@u.FirstName @u.LastName</td>
+                                <td><span class="uta-code-badge">@u.UserName</span></td>
+                                <td style="text-align:center">
+                                    <span class="uta-badge @(u.Role == "Administrador" ? "uta-badge--blue" : "uta-badge--green")">
+                                        @u.Role
+                                    </span>
+                                </td>
+                                <td style="text-align:center">
+                                    @if (!u.IsActive)
+                                    {
+                                        <span class="uta-badge" style="background-color: #e2e3e5; color: #383d41;">
+                                            <i class="bi bi-person-x me-1"></i> Inactivo
+                                        </span>
+                                    }
+                                    else if (u.IsLockedOut)
+                                    {
+                                        <span class="uta-badge uta-badge--red" title="Bloqueado hasta @u.LockoutEnd?.ToLocalTime()">
+                                            <i class="bi bi-lock-fill me-1"></i> Bloqueado
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="uta-badge uta-badge--blue">
+                                            Activo
+                                        </span>
+                                    }
+                                </td>
+                                <td style="text-align:center; font-size: 0.85rem; color: #666;">
+                                    @if (u.LastLogin.HasValue)
+                                    {
+                                        <div><i class="bi bi-calendar3 me-1"></i>@u.LastLogin.Value.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                                        <div><i class="bi bi-clock me-1"></i>@u.LastLogin.Value.ToLocalTime().ToString("HH:mm:ss")</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Nunca</span>
+                                    }
+                                </td>
+                                <td style="text-align:center">
+                                    @if (!u.IsActive)
+                                    {
+                                        <button class="uta-icon-btn-outline uta-icon-btn-outline--green me-1" @onclick="() => ConfirmActivate(u)" title="Activar">
+                                            <i class="bi bi-person-up"></i>
+                                        </button>
+                                    }
+                                    else if (u.IsLockedOut)
+                                    {
+                                        <button class="uta-icon-btn-outline uta-icon-btn-outline--green me-1" @onclick="() => ConfirmUnlock(u)" title="Desbloquear">
+                                            <i class="bi bi-unlock-fill"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="uta-icon-btn-outline uta-icon-btn-outline--maroon me-1" @onclick="() => OpenEditModal(u)" title="Editar">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button class="uta-icon-btn-outline uta-icon-btn-outline--red" @onclick="() => ConfirmDelete(u.Id)" title="Eliminar">
+                                            <i class="bi bi-trash3-fill"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (TotalItems > 0)
+            {
+                <div class="uta-pagination-footer rounded-bottom mt-3">
+                    <div class="uta-pagination-info">
+                        <span class="small text-muted">
+                            Se muestran <strong class="uta-text-highlight">@From</strong> a <strong class="uta-text-highlight">@To</strong> de <strong class="uta-text-highlight">@TotalItems</strong> usuarios
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">por página</span>
+                        <div class="uta-select-wrapper">
+                            <select class="form-select form-select-sm shadow-none" @onchange="OnPageSizeChanged">
+                                @foreach (var size in new[] { 5, 10, 25, 50 })
+                                {
+                                    <option value="@size" selected="@(PageSize == size)">@size</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex overflow-hidden">
+                        @foreach (var p in VisiblePages)
+                        {
+                            if (p == -1)
+                            {
+                                <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                            }
+                            else
+                            {
+                                var pNum = p;
+                                <button class="uta-pagination-btn @(pNum == CurrentPage ? "uta-pagination-btn--active" : "")"
+                                        @onclick="() => ChangePage(pNum)">@pNum</button>
+                            }
+                        }
+                        <button class="uta-pagination-btn @(!HasNextPage ? "disabled" : "")"
+                                @onclick="() => ChangePage(CurrentPage + 1)"
+                                disabled="@(!HasNextPage)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (_showModal)
+{
+    <div class="uta-overlay" @onclick="PromptCancelModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title">
+                        <i class="bi @(_isEditMode ? "bi-pencil-square" : "bi-person-plus")"></i> &nbsp;@(_isEditMode ? "Editar Usuario" : "Nuevo Usuario")
+                    </h3>
+                    <p class="uta-modal__subtitle">Complete los datos de acceso y contacto del personal</p>
+                </div>
+                <button class="uta-modal__close" @onclick="PromptCancelModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <EditForm Model="_editRequest" OnValidSubmit="SaveUser">
+                <DataAnnotationsValidator />
+                <div class="uta-modal__body">
+                    <div class="uta-form-grid">
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Nombre de Usuario</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person-badge uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("UserName") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_editRequest.UserName" 
+                                       @oninput="OnUserNameInput"
+                                       maxlength="@ValidationConstants.UserNameMax"
+                                       placeholder="EJ. JDOE" required />
+                            </div>
+                            @if (HasError("UserName")) { <div class="text-danger mt-1 small">@GetError("UserName")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Correo Electrónico</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-envelope uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("Email") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_editRequest.Email" 
+                                       @oninput="OnEmailInput" 
+                                       maxlength="@ValidationConstants.EmailMax"
+                                       placeholder="correo@empresa.com" required />
+                            </div>
+                            @if (HasError("Email")) { <div class="text-danger mt-1 small">@GetError("Email")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Nombre</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("FirstName") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_editRequest.FirstName" 
+                                       @oninput="OnFirstNameInput"
+                                       onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241"
+                                       maxlength="@ValidationConstants.NameMax"
+                                       placeholder="NOMBRE" required />
+                            </div>
+                            @if (HasError("FirstName")) { <div class="text-danger mt-1 small">@GetError("FirstName")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Apellido</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("LastName") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_editRequest.LastName" 
+                                       @oninput="OnLastNameInput"
+                                       onkeypress="return (event.charCode >= 65 && event.charCode <= 90) || (event.charCode >= 97 && event.charCode <= 122) || event.charCode == 209 || event.charCode == 241"
+                                       maxlength="@ValidationConstants.LastNameMax"
+                                       placeholder="APELLIDO" required />
+                            </div>
+                            @if (HasError("LastName")) { <div class="text-danger mt-1 small">@GetError("LastName")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Cédula</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-person-vcard uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("IDCard") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_editRequest.IDCard" 
+                                       @oninput="OnIDCardInput"
+                                       onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                       maxlength="@ValidationConstants.IDCardLength"
+                                       placeholder="10 DÍGITOS" />
+                            </div>
+                            @if (HasError("IDCard")) { <div class="text-danger mt-1 small">@GetError("IDCard")</div> }
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Teléfono</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-telephone uta-input-icon"></i>
+                                <input class="uta-form-control @(HasError("PhoneNumber") ? "is-invalid" : "")" 
+                                       type="text" 
+                                       value="@_editRequest.PhoneNumber" 
+                                       @oninput="OnPhoneInput"
+                                       onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                       maxlength="@ValidationConstants.PhoneLength"
+                                       placeholder="EJ. 0999999999" />
+                            </div>
+                            @if (HasError("PhoneNumber")) { <div class="text-danger mt-1 small">@GetError("PhoneNumber")</div> }
+                        </div>
+                        <div class="uta-form-group" style="grid-column: span 2;">
+                            <label class="uta-form-label">Dirección Domiciliaria (@(ValidationConstants.AddressMax - (_editRequest.Address?.Length ?? 0)))</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-geo-alt uta-input-icon"></i>
+                                <input class="uta-form-control" 
+                                       type="text" 
+                                       value="@_editRequest.Address" 
+                                       @oninput="OnAddressInput" 
+                                       maxlength="@ValidationConstants.AddressMax"
+                                       placeholder="DIRECCIÓN COMPLETA" />
+                            </div>
+                        </div>
+                        <div class="uta-form-group">
+                            <label class="uta-form-label">Rol del Sistema</label>
+                            <div class="uta-input-wrapper">
+                                <i class="bi bi-shield-check uta-input-icon"></i>
+                                <select class="form-select" @bind="_editRequest.Role">
+                                    <option value="Vendedor">Vendedor</option>
+                                    <option value="Administrador">Administrador</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        @if (!_isEditMode)
+                        {
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Contraseña</label>
+                                <div class="uta-input-wrapper">
+                                    <i class="bi bi-lock uta-input-icon"></i>
+                                    <input class="uta-form-control" type="password" 
+                                           value="@_editRequest.Password" 
+                                           @oninput="OnPasswordInput"
+                                           onkeypress="return event.charCode != 32"
+                                           maxlength="10"
+                                           placeholder="••••••••" required />
+                                </div>
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Confirmar Contraseña</label>
+                                <div class="uta-input-wrapper">
+                                    <i class="bi bi-lock-fill uta-input-icon"></i>
+                                    <input class="uta-form-control" type="password" @bind="_editRequest.ConfirmPassword" 
+                                           onkeypress="return event.charCode != 32"
+                                           maxlength="10"
+                                           placeholder="••••••••" required />
+                                </div>
+                            </div>
+                            <div class="uta-form-group" style="grid-column: span 2;">
+                                <div class="uta-password-requirements">
+                                    <div class="uta-req @(HasLength ? "valid" : "invalid")">
+                                        <i class="bi @(HasLength ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> 8-10 caracteres
+                                    </div>
+                                    <div class="uta-req @(HasNoSpaces ? "valid" : "invalid")">
+                                        <i class="bi @(HasNoSpaces ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> Sin espacios
+                                    </div>
+                                    <div class="uta-req @(HasUpper ? "valid" : "invalid")">
+                                        <i class="bi @(HasUpper ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> Una mayúscula
+                                    </div>
+                                    <div class="uta-req @(HasLower ? "valid" : "invalid")">
+                                        <i class="bi @(HasLower ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> Una minúscula
+                                    </div>
+                                    <div class="uta-req @(HasNumber ? "valid" : "invalid")">
+                                        <i class="bi @(HasNumber ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> Un número
+                                    </div>
+                                    <div class="uta-req @(HasSpecial ? "valid" : "invalid")">
+                                        <i class="bi @(HasSpecial ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> Un caracter especial
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="uta-form-group" style="grid-column: span 2;">
+                                <div class="alert alert-info py-2 m-0" style="font-size: 0.8rem;">
+                                    <i class="bi bi-info-circle me-2"></i>Deje en blanco si no desea cambiar la clave.
+                                </div>
+                            </div>
+                            <div class="uta-form-group">
+                                <label class="uta-form-label">Nueva Contraseña</label>
+                                <div class="uta-input-wrapper">
+                                    <i class="bi bi-lock uta-input-icon"></i>
+                                    <input class="uta-form-control" type="password" 
+                                           @oninput="OnUpdatePasswordInput"
+                                           onkeypress="return event.charCode != 32"
+                                           maxlength="10"
+                                           placeholder="Opcional" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="uta-modal__footer">
+                    <button type="button" class="uta-btn uta-btn--outline" @onclick="PromptCancelModal">Cancelar</button>
+                    <button type="submit" class="uta-btn uta-btn--primary" disabled="@(_errors.Any())">
+                        <i class="bi bi-check2"></i> Guardar Usuario
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private List<UserResponseDto> _users = new();
+    private bool _showModal = false;
+    private bool _isEditMode = false;
+    private RegisterUserRequest _editRequest = new();
+    private UpdateUserRequest _updateRequest = new();
+    private Dictionary<string, string> _errors = new();
+    private string _activeFilter = "activos"; 
+    private int _blockedCount = 0;
+
+    private string _alertMessage = "";
+    private bool _isError = false;
+
+    // Paginación y Búsqueda
+    private string SearchTerm = string.Empty;
+    private string SearchCriterion = "name";
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+    private int TotalItems = 0;
+    private int TotalPages => (int)Math.Ceiling((double)TotalItems / PageSize);
+    private int From => TotalItems == 0 ? 0 : ((CurrentPage - 1) * PageSize) + 1;
+    private int To => Math.Min(CurrentPage * PageSize, TotalItems);
+    private bool HasNextPage => CurrentPage < TotalPages;
+    private List<int> VisiblePages => PaginationHelper.GenerateVisiblePages(CurrentPage, TotalPages);
+
+    private async Task ShowToast(string message, bool isError = false)
+    {
+        _alertMessage = message;
+        _isError = isError;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _alertMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    // Password Flags
+    private bool HasNoSpaces => !_editRequest.Password.Contains(" ");
+    private bool HasLength => _editRequest.Password.Length >= 8 && _editRequest.Password.Length <= 10 && HasNoSpaces;
+    private bool HasUpper => _editRequest.Password.Any(char.IsUpper);
+    private bool HasLower => _editRequest.Password.Any(char.IsLower);
+    private bool HasNumber => _editRequest.Password.Any(char.IsDigit);
+    private bool HasSpecial => _editRequest.Password.Any(ch => !char.IsLetterOrDigit(ch));
+    private bool IsPasswordSecure => HasLength && HasNoSpaces && HasUpper && HasLower && HasNumber && HasSpecial;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        var result = await UserApiService.GetPagedAsync(CurrentPage, PageSize, SearchTerm, SearchCriterion, _activeFilter == "activos" ? "active" : (_activeFilter == "bloqueados" ? "bloqueados" : "inactive"));
+        if (result != null)
+        {
+            _users = result.Items;
+            TotalItems = result.TotalCount;
+        }
+
+        // Para el contador de bloqueados, seguimos haciendo una consulta general o el API podría devolverlo
+        var all = await UserApiService.GetAllAsync();
+        _blockedCount = all.Count(u => u.IsLockedOut && u.IsActive);
+        
+        StateHasChanged();
+    }
+
+    private async Task ChangeFilter(string filter)
+    {
+        _activeFilter = filter;
+        CurrentPage = 1;
+        await LoadUsers();
+    }
+
+    private async Task OnInputSearch(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString() ?? string.Empty;
+        CurrentPage = 1;
+        await LoadUsers();
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            PageSize = newSize;
+            CurrentPage = 1;
+            await LoadUsers();
+        }
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= TotalPages)
+        {
+            CurrentPage = newPage;
+            await LoadUsers();
+        }
+    }
+
+    private void OnUserNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        _editRequest.UserName = val;
+        ValidateField("UserName", val, "Usuario");
+    }
+
+    private void OnFirstNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        _editRequest.FirstName = val;
+        ValidateField("FirstName", val, "Nombre");
+    }
+
+    private void OnLastNameInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = val.Trim().Replace(" ", "").ToUpper();
+        _editRequest.LastName = val;
+        ValidateField("LastName", val, "Apellido");
+    }
+
+    private void OnIDCardInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        _editRequest.IDCard = val;
+        ValidateField("IDCard", val, "Cédula");
+    }
+
+    private void OnPhoneInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        val = new string(val.Where(char.IsDigit).ToArray()).ToUpper();
+        _editRequest.PhoneNumber = val;
+        ValidateField("PhoneNumber", val, "Teléfono");
+    }
+
+    private void OnAddressInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        if (val.Length > ValidationConstants.AddressMax) val = val.Substring(0, ValidationConstants.AddressMax);
+        _editRequest.Address = val.ToUpper();
+    }
+
+    private void OnEmailInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString()?.Trim() ?? "";
+        _editRequest.Email = val;
+        ValidateField("Email", val, "Correo");
+    }
+
+    private void OnPasswordInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        if (val.Length > ValidationConstants.PasswordMax) val = val.Substring(0, ValidationConstants.PasswordMax);
+        _editRequest.Password = val;
+        StateHasChanged();
+    }
+
+    private void OnUpdatePasswordInput(ChangeEventArgs e)
+    {
+        string val = e.Value?.ToString() ?? "";
+        if (val.Length > ValidationConstants.PasswordMax) val = val.Substring(0, ValidationConstants.PasswordMax);
+        _updateRequest.NewPassword = val;
+    }
+
+    private void ValidateField(string field, string val, string label)
+    {
+        _errors.Remove(field);
+        if (string.IsNullOrWhiteSpace(val) && field != "IDCard" && field != "PhoneNumber") 
+        {
+            _errors[field] = $"{label} es requerido.";
+            return;
+        }
+
+        if (field == "IDCard" && !string.IsNullOrEmpty(val) && val.Length != ValidationConstants.IDCardLength)
+        {
+            _errors[field] = $"La cédula debe tener {ValidationConstants.IDCardLength} dígitos.";
+            return;
+        }
+
+        if (field == "PhoneNumber" && !string.IsNullOrEmpty(val))
+        {
+            if (val.Length != ValidationConstants.PhoneLength) _errors[field] = $"El teléfono debe tener {ValidationConstants.PhoneLength} dígitos.";
+            else if (!val.StartsWith("09")) _errors[field] = "Debe empezar con 09.";
+            return;
+        }
+
+        if (field == "Email" && !IsValidEmail(val))
+        {
+            _errors[field] = "Formato de correo no válido.";
+            return;
+        }
+
+        if ((field == "FirstName" || field == "LastName") && !System.Text.RegularExpressions.Regex.IsMatch(val, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$"))
+        {
+            _errors[field] = $"{label} solo debe contener letras.";
+            return;
+        }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address.Equals(email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private bool HasError(string field) => _errors.ContainsKey(field);
+    private string GetError(string field) => _errors.TryGetValue(field, out var error) ? error : "";
+
+    private void OpenCreateModal()
+    {
+        _editRequest = new RegisterUserRequest { Role = "Vendedor" };
+        _errors.Clear();
+        _isEditMode = false;
+        _showModal = true;
+    }
+
+    private void OpenEditModal(UserResponseDto user)
+    {
+        _updateRequest = new UpdateUserRequest
+        {
+            Id = user.Id,
+            UserName = user.UserName,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            IDCard = user.IDCard,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            Address = user.Address,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            NewPassword = ""
+        };
+        _editRequest = _updateRequest;
+        _errors.Clear();
+        _isEditMode = true;
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+    }
+
+    private async Task PromptCancelModal()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Cancelar operación?",
+            text = "Los datos ingresados se perderán.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, cancelar",
+            cancelButtonText = "Continuar editando"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            CloseModal();
+        }
+    }
+
+    private async Task SaveUser()
+    {
+        ValidateField("UserName", _editRequest.UserName, "Usuario");
+        ValidateField("Email", _editRequest.Email, "Correo");
+        ValidateField("FirstName", _editRequest.FirstName, "Nombre");
+        ValidateField("LastName", _editRequest.LastName, "Apellido");
+        ValidateField("PhoneNumber", _editRequest.PhoneNumber, "Teléfono");
+
+        if (!_isEditMode)
+        {
+            if (!IsPasswordSecure)
+            {
+                await ShowToast("La contraseña no cumple con los requisitos mínimos de seguridad.", true);
+                return;
+            }
+
+            if (_editRequest.Password != _editRequest.ConfirmPassword)
+            {
+                await ShowToast("Las contraseñas no coinciden.", true);
+                return;
+            }
+        }
+
+        if (_errors.Any())
+        {
+            await ShowToast("Por favor corrija los errores del formulario.", true);
+            return;
+        }
+
+        HttpResponseMessage response;
+        if (_isEditMode)
+        {
+            response = await UserApiService.UpdateAsync(_updateRequest.Id, _updateRequest);
+        }
+        else
+        {
+            response = await UserApiService.CreateAsync(_editRequest);
+        }
+
+        await HandleSaveResponse(response);
+    }
+
+    private async Task HandleSaveResponse(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            _showModal = false;
+            await LoadUsers();
+            await ShowToast(_isEditMode ? "Usuario actualizado correctamente." : "Usuario guardado exitosamente.");
+        }
+        else
+        {
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var errorJson = await response.Content.ReadAsStringAsync();
+                var errorObj = System.Text.Json.JsonDocument.Parse(errorJson);
+                var isInactive = errorObj.RootElement.TryGetProperty("isInactive", out var inactiveProp) && inactiveProp.GetBoolean();
+
+                if (isInactive)
+                {
+                    var userId = errorObj.RootElement.GetProperty("userId").GetInt32();
+                    var confirm = await JS.InvokeAsync<object>("Swal.fire", new
+                    {
+                        title = "Usuario Inactivo Encontrado",
+                        text = "Este usuario ya existe pero fue inactivado. ¿Desea reactivarlo y actualizar sus datos?",
+                        icon = "question",
+                        showCancelButton = true,
+                        confirmButtonColor = "#28a745",
+                        cancelButtonColor = "#6c757d",
+                        confirmButtonText = "Sí, reactivar",
+                        cancelButtonText = "Cancelar"
+                    });
+
+                    var jsonConfirm = System.Text.Json.JsonSerializer.Serialize(confirm);
+                    if (jsonConfirm.Contains("\"isConfirmed\":true"))
+                    {
+                        var updateFromEdit = new UpdateUserRequest
+                        {
+                            Id = userId,
+                            UserName = _editRequest.UserName,
+                            FirstName = _editRequest.FirstName,
+                            LastName = _editRequest.LastName,
+                            IDCard = _editRequest.IDCard,
+                            Email = _editRequest.Email,
+                            PhoneNumber = _editRequest.PhoneNumber,
+                            Address = _editRequest.Address,
+                            Role = _editRequest.Role,
+                            NewPassword = _editRequest.Password,
+                            IsActive = true
+                        };
+                        var reactivateResponse = await UserApiService.ReactivateAsync(userId, updateFromEdit);
+                        await HandleSaveResponse(reactivateResponse);
+                    }
+                    return;
+                }
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            await ShowToast(errorContent, true);
+        }
+    }
+
+    private async Task ConfirmUnlock(UserResponseDto user)
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Desbloquear usuario?",
+            text = $"Se habilitará el acceso para {user.FirstName} {user.LastName}.",
+            icon = "question",
+            showCancelButton = true,
+            confirmButtonColor = "#28a745",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, desbloquear",
+            cancelButtonText = "Cancelar"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            var response = await UserApiService.UnlockAsync(user.Id);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadUsers();
+                await ShowToast("El usuario ha sido desbloqueado correctamente.");
+            }
+        }
+    }
+
+    private async Task ConfirmActivate(UserResponseDto user)
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Activar usuario?",
+            text = $"El usuario {user.FirstName} {user.LastName} volverá a estar activo.",
+            icon = "question",
+            showCancelButton = true,
+            confirmButtonColor = "#28a745",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, activar",
+            cancelButtonText = "Cancelar"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            var updateRequest = new UpdateUserRequest
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                IDCard = user.IDCard,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Address = user.Address,
+                Role = user.Role,
+                IsActive = true
+            };
+            var response = await UserApiService.ReactivateAsync(user.Id, updateRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadUsers();
+                await ShowToast("El usuario ha sido reactivado correctamente.");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                await ShowToast(errorContent, true);
+            }
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Eliminar usuario?",
+            text = "El usuario será marcado como inactivo y desaparecerá de esta lista.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, eliminar",
+            cancelButtonText = "Cancelar"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            var response = await UserApiService.DeleteAsync(id);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadUsers();
+                await ShowToast("El usuario ha sido inactivado correctamente.");
+            }
+        }
+    }
+}

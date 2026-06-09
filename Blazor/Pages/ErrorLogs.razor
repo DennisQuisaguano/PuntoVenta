@@ -1,0 +1,327 @@
+@page "/admin/logs"
+@using Application.Features.ErrorLogs
+@using Application.Common
+@using Blazor.Services
+@using Blazor.Helpers
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@implements IDisposable
+@inject ErrorLogApiService ApiService
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<div class="uta-page">
+    <div class="uta-page-header">
+        <div class="uta-page-header__left">
+            <div class="uta-breadcrumb">
+                <span style="cursor:pointer" @onclick='() => NavManager.NavigateTo("/")'>Panel Principal</span>
+                <span class="uta-breadcrumb__sep">›</span>
+                <span class="uta-breadcrumb__active">Logs de Sistema</span>
+            </div>
+            <h1 class="uta-page-title">
+                <i class="bi bi-bug-fill text-danger uta-page-title__icon"></i>
+                Registro de Errores
+            </h1>
+            <p class="uta-page-subtitle">Monitoreo técnico y auditoría de excepciones del sistema</p>
+        </div>
+        <div class="uta-page-header__right">
+            <button class="uta-btn uta-btn--outline" @onclick="ConfirmClearLogs">
+                <i class="bi bi-trash"></i> &nbsp;Limpiar Logs Antiguos
+            </button>
+        </div>
+    </div>
+
+    <div class="uta-card">
+        <div class="uta-card__header">
+            <div class="uta-card__header-left">
+                <i class="bi bi-search uta-card__header-icon"></i>
+                Buscador de Logs
+            </div>
+        </div>
+        <div class="uta-card__body">
+            <div class="uta-search-bar mb-4" style="max-width: 800px; margin: 0 auto;">
+                <input class="uta-search-bar__input" 
+                       type="text" 
+                       value="@_searchTerm" 
+                       @oninput="OnInputSearch"
+                       placeholder="Buscar por mensaje, usuario o tipo de excepción..." />
+                <button class="uta-btn uta-btn--primary uta-search-bar__btn" @onclick="() => FetchLogs(1)">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+                <h6 class="m-0" style="font-size: 0.85rem; font-weight: 700; color: #495057; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="bi bi-list-ul me-2"></i>Listado de Errores
+                </h6>
+                <span class="uta-badge uta-badge--blue">@(_pagedResponse?.Items?.Count() ?? 0) de @TotalItems mostrados</span>
+            </div>
+
+            <div class="uta-table-wrap uta-table-wrap--bordered">
+                <table class="uta-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th style="width: 180px;">Fecha</th>
+                            <th>Tipo / Mensaje</th>
+                            <th style="width: 150px;">Usuario</th>
+                            <th style="width: 100px; text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_pagedResponse?.Items == null || !_pagedResponse.Items.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="uta-table__empty">
+                                    <div class="uta-empty-state">
+                                        <div class="uta-empty-state__icon"><i class="bi bi-shield-check text-success"></i></div>
+                                        <div class="uta-empty-state__text">No se encontraron errores</div>
+                                        <div class="uta-empty-state__sub">El sistema parece estar funcionando correctamente</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var log in _pagedResponse.Items)
+                            {
+                                <tr>
+                                    <td><span class="uta-code-badge">@log.Id.ToString("D4")</span></td>
+                                    <td class="text-muted" style="font-size: 0.85rem;">@log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                    <td>
+                                        <div style="font-weight: 600; color: #dc3545; font-size: 0.85rem;">@log.ExceptionType</div>
+                                        <div class="text-truncate" style="max-width: 500px; color: #444;" title="@log.Message">@log.Message</div>
+                                    </td>
+                                    <td>
+                                        <span class="uta-badge uta-badge--blue">
+                                            <i class="bi bi-person"></i> @(log.UserName ?? "Sistema")
+                                        </span>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <button class="uta-btn uta-btn--sm uta-btn--outline" @onclick="() => ShowDetail(log)">
+                                            <i class="bi bi-eye"></i> Detalle
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (TotalItems > 0)
+            {
+                <div class="uta-pagination-footer rounded-bottom mt-3">
+                    <div class="uta-pagination-info">
+                        <span class="small text-muted">
+                            Se muestran <strong class="uta-text-highlight">@From</strong> a <strong class="uta-text-highlight">@To</strong> de <strong class="uta-text-highlight">@TotalItems</strong> resultados
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">por página</span>
+                        <div class="uta-select-wrapper">
+                            <select class="form-select form-select-sm shadow-none" @onchange="OnPageSizeChanged">
+                                @foreach (var size in new[] { 15, 25, 50, 100 })
+                                {
+                                    <option value="@size" selected="@(_pageSize == size)">@size</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex overflow-hidden">
+                        @foreach (var p in VisiblePages)
+                        {
+                            if (p == -1)
+                            {
+                                <span class="uta-pagination-btn uta-pagination-btn--ellipsis">...</span>
+                            }
+                            else
+                            {
+                                var pNum = p;
+                                <button class="uta-pagination-btn @(pNum == _currentPage ? "uta-pagination-btn--active" : "")"
+                                        @onclick="() => ChangePage(pNum)">@pNum</button>
+                            }
+                        }
+                        <button class="uta-pagination-btn @(!HasNext ? "disabled" : "")"
+                                @onclick="NextPage"
+                                disabled="@(!HasNext)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (_selectedLog != null)
+{
+    <div class="uta-overlay" @onclick="CloseModal">
+        <div class="uta-modal uta-modal--lg" @onclick:stopPropagation="true">
+            <div class="uta-modal__header">
+                <div>
+                    <h3 class="uta-modal__title text-danger">
+                        <i class="bi bi-exclamation-octagon"></i> &nbsp;Detalle del Error #@_selectedLog.Id.ToString("D4")
+                    </h3>
+                    <p class="uta-modal__subtitle">Información técnica para diagnóstico</p>
+                </div>
+                <button class="uta-modal__close" @onclick="CloseModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="uta-modal__body">
+                <div class="uta-client-data-grid mb-4">
+                    <div class="uta-data-item">
+                        <span class="uta-data-item__label">Fecha y Hora</span>
+                        <span class="uta-data-item__value">@_selectedLog.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span>
+                    </div>
+                    <div class="uta-data-item">
+                        <span class="uta-data-item__label">Usuario</span>
+                        <span class="uta-data-item__value">
+                            <span class="uta-badge uta-badge--blue">@(_selectedLog.UserName ?? "Sistema")</span>
+                        </span>
+                    </div>
+                    <div class="uta-data-item">
+                        <span class="uta-data-item__label">Método HTTP</span>
+                        <span class="uta-data-item__value">
+                            <span class="badge bg-secondary">@_selectedLog.HttpMethod</span>
+                        </span>
+                    </div>
+                    <div class="uta-data-item uta-data-item--full">
+                        <span class="uta-data-item__label">Ruta de Petición</span>
+                        <span class="uta-data-item__value text-break">@_selectedLog.RequestPath</span>
+                    </div>
+                </div>
+                
+                <div class="uta-form-group mb-3">
+                    <label class="uta-form-label text-danger" style="font-weight: 600;">Mensaje de Excepción</label>
+                    <div class="p-3 border rounded bg-light text-danger" style="font-weight: 500;">
+                        @_selectedLog.Message
+                    </div>
+                </div>
+
+                <div class="uta-form-group mb-0">
+                    <label class="uta-form-label">Stack Trace (Traza de Pila)</label>
+                    <pre class="p-3 border rounded bg-dark text-white" style="font-size: 0.8rem; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">@_selectedLog.StackTrace</pre>
+                </div>
+            </div>
+            <div class="uta-modal__footer">
+                <button class="uta-btn uta-btn--outline w-100" @onclick="CloseModal">Cerrar Detalle</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private PagedResponse<ErrorLogResponseDto>? _pagedResponse;
+    private string _searchTerm = "";
+    private int _currentPage = 1;
+    private int _pageSize = 15;
+    private ErrorLogResponseDto? _selectedLog;
+    private System.Timers.Timer? _debounceTimer;
+
+    private int TotalItems => _pagedResponse?.TotalCount ?? 0;
+    private int TotalPages => _pagedResponse?.TotalPages ?? 0;
+    private int From => TotalItems == 0 ? 0 : ((_currentPage - 1) * _pageSize) + 1;
+    private int To => Math.Min(_currentPage * _pageSize, TotalItems);
+    private bool HasPrevious => _pagedResponse?.HasPreviousPage ?? false;
+    private bool HasNext => _pagedResponse?.HasNextPage ?? false;
+    private List<int> VisiblePages => PaginationHelper.GenerateVisiblePages(_currentPage, TotalPages);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (s, e) => await InvokeAsync(OnDebounceSearch);
+        _debounceTimer.AutoReset = false;
+
+        await FetchLogs(1);
+    }
+
+    private void OnInputSearch(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        _currentPage = 1;
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task OnDebounceSearch()
+    {
+        await FetchLogs(1);
+    }
+
+    private async Task FetchLogs(int pageNumber)
+    {
+        _currentPage = pageNumber;
+        _pagedResponse = await ApiService.GetPagedLogsAsync(_currentPage, _pageSize, _searchTerm);
+        StateHasChanged();
+    }
+
+    private void ShowDetail(ErrorLogResponseDto log)
+    {
+        _selectedLog = log;
+    }
+
+    private void CloseModal()
+    {
+        _selectedLog = null;
+    }
+
+    private async Task ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= TotalPages)
+        {
+            await FetchLogs(newPage);
+        }
+    }
+
+    private async Task PreviousPage() => await ChangePage(_currentPage - 1);
+    private async Task NextPage() => await ChangePage(_currentPage + 1);
+
+    private async Task ConfirmClearLogs()
+    {
+        var result = await JS.InvokeAsync<object>("Swal.fire", new
+        {
+            title = "¿Limpiar Logs Antiguos?",
+            text = "Se eliminarán todos los logs con más de 30 días de antigüedad. Esta acción no se puede deshacer.",
+            icon = "warning",
+            showCancelButton = true,
+            confirmButtonColor = "#dc3545",
+            cancelButtonColor = "#6c757d",
+            confirmButtonText = "Sí, limpiar logs",
+            cancelButtonText = "Cancelar"
+        });
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        if (json.Contains("\"isConfirmed\":true"))
+        {
+            var success = await ApiService.ClearOldLogsAsync(30);
+            if (success)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Logs Limpiados", "Los logs antiguos han sido eliminados correctamente.", "success");
+                await FetchLogs(1);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "Ocurrió un problema al intentar limpiar los logs.", "error");
+            }
+        }
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            _pageSize = newSize;
+            _currentPage = 1;
+            await FetchLogs(1);
+        }
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

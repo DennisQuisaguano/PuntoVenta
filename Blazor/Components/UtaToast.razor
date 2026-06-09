@@ -1,0 +1,45 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="uta-toast-wrapper">
+        <div class="uta-toast @(IsError ? "uta-toast--error" : "uta-toast--success")">
+            <div class="uta-toast__icon">
+                <i class="bi @(IsError ? "bi-exclamation-triangle-fill" : "bi-check2-circle")"></i>
+            </div>
+            <div class="uta-toast__body">
+                <div class="uta-toast__title">@(IsError ? "Atención" : "¡Éxito!")</div>
+                <div class="uta-toast__message">@Message</div>
+            </div>
+            <button class="uta-toast__close" @onclick="CloseToast">
+                <i class="bi bi-x"></i>
+            </button>
+            <div class="uta-toast__progress"></div>
+        </div>
+    </div>
+}
+
+@code {
+    public string Message { get; private set; } = string.Empty;
+    public bool IsError { get; private set; } = false;
+
+    public async Task ShowAsync(string message, bool isError = false)
+    {
+        Message = message;
+        IsError = isError;
+        StateHasChanged();
+        
+        await Task.Delay(3000);
+        
+        // Auto cerrar solo si el mensaje es el mismo (evita cerrar un toast nuevo)
+        if (Message == message)
+        {
+            Message = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseToast()
+    {
+        Message = string.Empty;
+        StateHasChanged();
+    }
+}
